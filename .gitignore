@@ -1,0 +1,5 @@
+*.pyc
+experiments/*
+*.csv
+.ipynb_checkpoints/
+venv_ml/
