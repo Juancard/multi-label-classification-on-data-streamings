@@ -133,7 +133,7 @@ def main():
     )
     metadata = {
         "experimento": args.experiment or "",
-        "command": "".join(sys.argv),
+        "command": " ".join(sys.argv),
         "date": time.strftime("%Y%m%d%H%M%S"),
     }
 
