@@ -81,7 +81,7 @@ def save_labels_relationship(
 
 def load_20ng_dataset():
     abs_path = os.path.dirname(os.path.realpath(__file__))
-    arff_path = "../datasets/20ng/meka/20NG-F.arff"
+    arff_path = "./datasets/20ng/20NG-F.arff"
     N_LABELS = 20
     label_location = "start"
     arff_file_is_sparse = False
