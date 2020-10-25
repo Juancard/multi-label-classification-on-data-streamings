@@ -1,3 +1,5 @@
+from skmultiflow.utils import check_random_state
+from sklearn.datasets import make_multilabel_classification
 import os
 import sys
 import numpy as np
@@ -12,9 +14,7 @@ from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from matplotlib import pyplot as plt
-
-from sklearn.datasets import make_multilabel_classification
-from skmultiflow.utils import check_random_state
+import matplotlib.patches as mpatches
 
 
 class MultilabelGenerator2(MultilabelGenerator):
@@ -81,35 +81,99 @@ def evaluar(stream, model, pretrain_size=0.1):
     evaluator.evaluate(stream=stream, model=model)
 
 
-def label_skew_graph(y_array, color=None, plot_labels=-1, print_top=False, label=""):
+def generate_labels_skew(y_array, print_top=False):
     df = pd.DataFrame(y_array, columns=[i for i in range(0, y_array.shape[1])])
     labels_set_count = df.groupby(
         df.columns.tolist(), as_index=True).size().sort_values(ascending=False)
     if (print_top):
-        print(label, " - Top ", print_top, ": \n",
+        print("Top ", print_top, ": \n",
               labels_set_count[:print_top], "\n")
     labels_set_count_scaled = (labels_set_count-labels_set_count.min()) / \
         (labels_set_count.max()-labels_set_count.min())
-    plt.figure(1)
-    return sns.lineplot(data=labels_set_count_scaled.values[:plot_labels], color=color, label=label)
+    return labels_set_count_scaled
 
 
-def labels_distribution_graph(y_array, color=None, print_top=False, label=""):
+def generate_labels_distribution(y_array, print_top=False):
     df = pd.DataFrame(y_array, columns=[i for i in range(0, y_array.shape[1])])
     df_count = df.sum(axis=1).value_counts()
     labels_distribution = df_count.reindex(
         np.arange(df_count.index.min(), df_count.index.max() + 1)).fillna(0)
     if (print_top):
-        print(label, " - Número de etiquetas por instancia vs frecuencia - ",
+        print("Número de etiquetas por instancia vs frecuencia - ",
               print_top, "\n", labels_distribution[:print_top], "\n")
     labels_distribution_scaled = (labels_distribution-0)/(
         labels_distribution.max()-0)
     #print("Número de etiquetas por instancia vs frecuencia (escalada)\n", labels_distribution_scaled)
-    plt.figure(2)
-    return labels_distribution_scaled, sns.lineplot(data=labels_distribution_scaled, color=color, label=label)
+    return labels_distribution_scaled
 
 
-def labels_relation_graph(y_array, cardinalidad=False, print_coocurrence=False, annot=False):
+def labels_distribution_graph(data, title="Label Distribution", output=False):
+    f1 = plt.figure(figsize=(16, 8))
+    a1 = f1.gca()
+    a1.set_title(title)
+    a1.set_xlabel('Labels Combinations')
+    a1.set_ylabel('Frequency (Scaled)')
+    handles = []
+    for i in data:
+        sns.pointplot(**i, ax=a1)
+        handles.append(
+            mpatches.Patch(
+                color=i.get("color"),
+                label=i.get("label")
+            )
+        )
+    plt.legend(handles=handles)
+    if (output):
+        f1.savefig(output)
+    plt.cla()
+    plt.clf()
+
+
+def labels_skew_graph(data, title="", output=False):
+    f1 = plt.figure(figsize=(16, 8))
+    a1 = f1.gca()
+    a1.set_title(title)
+    a1.set_xlabel('Top Combinations')
+    a1.set_ylabel('Frequency (Scaled)')
+    handles = []
+    for i in data:
+        sns.pointplot(**i, ax=a1)
+        handles.append(
+            mpatches.Patch(
+                color=i.get("color"),
+                label=i.get("label")
+            )
+        )
+    plt.legend(handles=handles)
+    if (output):
+        f1.savefig(output)
+    plt.cla()
+    plt.clf()
+
+
+def labels_distribution_mae_graph(data, title="", output=False):
+    f1 = plt.figure(figsize=(16, 8))
+    a1 = f1.gca()
+    a1.set_title(title)
+    a1.set_xlabel('Labels Combinations')
+    a1.set_ylabel('Distance from Original Dataset')
+    handles = []
+    for i in data:
+        sns.pointplot(**i, ax=a1)
+        handles.append(
+            mpatches.Patch(
+                color=i.get("color"),
+                label=i.get("label")
+            )
+        )
+    plt.legend(handles=handles)
+    if (output):
+        f1.savefig(output)
+    plt.cla()
+    plt.clf()
+
+
+def generate_labels_relationship(y_array, cardinalidad=False, print_coocurrence=False):
     # Se calcula la probabilidad condicional P(A|B)
     # p(A|B) = P(A intersect B) / P(B)
     p_b = np.sum(y_array, axis=0)
@@ -130,7 +194,20 @@ def labels_relation_graph(y_array, cardinalidad=False, print_coocurrence=False, 
         out=np.zeros(p_a_intersection_b.shape, dtype=float),
         where=p_b != 0
     ).T
-    plt.figure(3)
-    f, ax = plt.subplots(figsize=(22, 8))
-    #ax.set(xscale="log", yscale="log")
-    return p_b, coocurrence, conditional_probs, sns.heatmap(conditional_probs, linewidths=0, cmap=sns.color_palette("Greys_r", n_colors=100), ax=ax, annot=annot)
+    return p_b, coocurrence, conditional_probs
+
+
+def labels_relationship_graph(plot_props, title="", output=False):
+    f1 = plt.figure(figsize=(24, 16))
+    a1 = f1.gca()
+    a1.set_title(title)
+    sns.heatmap(
+        linewidths=0,
+        cmap=sns.color_palette("Greys_r", n_colors=100),
+        ax=a1,
+        **plot_props
+    )
+    if (output):
+        f1.savefig(output)
+    plt.cla()
+    plt.clf()

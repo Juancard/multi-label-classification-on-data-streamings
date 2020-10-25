@@ -7,10 +7,16 @@ import time
 import csv
 import json
 import logging
+import seaborn as sns
 from sklearn.metrics import mean_absolute_error
 from skmultilearn.dataset import load_dataset, load_from_arff
 from skmultiflow.data.data_stream import DataStream
-from common.helpers import labels_relation_graph, label_skew_graph, labels_distribution_graph
+from common.helpers import generate_labels_relationship, labels_relationship_graph, generate_labels_skew, labels_skew_graph, generate_labels_distribution, labels_distribution_graph, labels_distribution_mae_graph
+
+
+PLOT_COLORS = ["red", "blue", "green", "orange",
+               "violet", "yellow", "brown", "gray"]
+SKEW_TOP_COMBINATIONS = 50
 
 parser = argparse.ArgumentParser(
     "Script to analyze a generated synthetic dataset")
@@ -45,33 +51,32 @@ def create_path_if_not_exists(path):
     return path
 
 
-def save_label_relationships(
+def filename_path(name, dataset_name, output_dir, ext="csv"):
+    filename = "{}_{}.{}".format(dataset_name, name, ext)
+    return os.path.join(output_dir, filename)
+
+
+def save_labels_relationship(
         output_dir,
         dataset_name,
         priors,
         coocurrences,
-        conditional_matrix,
-        graph
+        conditional_matrix
 ):
-    def filename_path(name, ext="csv"):
-        filename = "{}_{}.{}".format(dataset_name, name, ext)
-        return os.path.join(output_dir, filename)
 
-    with open(filename_path("conditional"), 'w') as f:
+    with open(filename_path("conditional", dataset_name, output_dir), 'w') as f:
         writer = csv.writer(f)
         for row in conditional_matrix:
             writer.writerow(row)
 
-    with open(filename_path("priors"), 'w') as f:
+    with open(filename_path("priors", dataset_name, output_dir), 'w') as f:
         writer = csv.writer(f)
         writer.writerow(priors)
 
-    with open(filename_path("coocurrences"), 'w') as f:
+    with open(filename_path("coocurrences", dataset_name, output_dir), 'w') as f:
         writer = csv.writer(f)
         for row in coocurrences:
             writer.writerow(row)
-
-    graph.get_figure().savefig(filename_path("relationship_graph", ext="png"))
 
 
 def load_20ng_dataset():
@@ -128,11 +133,13 @@ def main():
     )
     metadata = {
         "experimento": args.experiment or "",
-        "command": sys.argv,
+        "command": "".join(sys.argv),
         "date": time.strftime("%Y%m%d%H%M%S"),
     }
-    label_skew_plot = None
-    label_distribution_plot = None
+
+    lk_plot_data = []
+    ld_plot_data = []
+    ld_mae_plot_data = []
 
     if not args.dataset:
         print("Dataset not provided. Exiting.")
@@ -158,31 +165,68 @@ def main():
     }
 
     logging.info("Analyzing label relationship")
-    priors, coocurrences, conditional_matrix, graph = labels_relation_graph(
+    priors, coocurrences, conditional_matrix = generate_labels_relationship(
         y_stream.toarray(),
         cardinalidad=cardinality,
-        print_coocurrence=False,
-        annot=False
     )
-    save_label_relationships(
+    save_labels_relationship(
         output_dir,
         args.dataset,
         priors,
         coocurrences,
-        conditional_matrix,
-        graph
+        conditional_matrix
+    )
+    labels_relationship_graph(
+        plot_props={
+            "data": conditional_matrix
+        },
+        output=os.path.join(
+            output_dir,
+            filename_path("relationship_graph", args.dataset,
+                          output_dir, ext="png")
+        )
     )
     data_stream.restart()
 
     logging.info("Analyzing label skew")
-    label_skew_plot = label_skew_graph(
-        y_stream.toarray(), color="black", plot_labels=500, label="Original")
+    labels_skew_original = generate_labels_skew(y_stream.toarray())
+    labels_skew_original.to_csv(
+        os.path.join(
+            output_dir, args.dataset + "_label_skew.csv"
+        )
+    )
+    lk_plot_data.append({
+        "x": np.arange(1, SKEW_TOP_COMBINATIONS + 1),
+        "y": labels_skew_original.values[:SKEW_TOP_COMBINATIONS],
+        "color": "black",
+        "join": True,
+        "label": "Original"
+    })
 
     logging.info("Analyzing label distribution")
-    labels_distribution_original, label_distribution_plot = labels_distribution_graph(
-        y_stream.toarray(), color="black", label="Original")
-    labels_distribution_original.to_csv(os.path.join(
-        output_dir, args.dataset + "_label_distribution.csv"))
+    labels_distribution_original = generate_labels_distribution(
+        y_stream.toarray()
+    )
+    labels_distribution_original.to_csv(
+        os.path.join(
+            output_dir, args.dataset + "_label_distribution.csv"
+        )
+    )
+    ld_plot_data.append({
+        "x": labels_distribution_original.index.values,
+        "y": labels_distribution_original.values,
+        "color": "black",
+        "join": True,
+        "label": "Original"
+    })
+    # Mean absolute error - graph
+    ld_mae_plot_data.append({
+        "x": labels_distribution_original.index.values,
+        "y": np.zeros(shape=len(labels_distribution_original)),
+        "color": "black",
+        "label": "Original",
+        "join": True
+    })
 
     # Limpia memoria
     del X_stream, y_stream, data_stream
@@ -212,37 +256,75 @@ def main():
             ) / y_syn.toarray().shape[0]
 
             logging.info("Analyzing label skew")
-            label_skew_plot = label_skew_graph(
-                y_syn.toarray(), plot_labels=500, label=stream_name)
+            labels_skew_syn = generate_labels_skew(y_syn.toarray())
+            labels_skew_syn.to_csv(
+                os.path.join(
+                    output_dir, stream_name + "_label_skew.csv"
+                )
+            )
+            lk_plot_data.append({
+                "x": np.arange(1, SKEW_TOP_COMBINATIONS + 1),
+                "y": labels_skew_syn.values[:SKEW_TOP_COMBINATIONS],
+                "color": PLOT_COLORS[idx],
+                "join": True,
+                "label": stream_name
+            })
 
             logging.info("Analyzing label distribution")
-            labels_distribution_syn, label_distribution_plot = labels_distribution_graph(
-                y_syn.toarray(), label=stream_name)
-            labels_distribution_syn.to_csv(os.path.join(
-                output_dir, stream_name + "_label_distribution.csv"))
-            ld_syn_array = labels_distribution_syn.reindex(
+            labels_distribution_syn = generate_labels_distribution(
+                y_syn.toarray())
+            ld_syn = labels_distribution_syn.reindex(
                 np.arange(
                     labels_distribution_original.index.min(),
                     labels_distribution_original.index.max() + 1
                 )
-            ).fillna(0).to_numpy()
-            ld_array = labels_distribution_original.to_numpy()
-            mae = mean_absolute_error(ld_array, ld_syn_array)
+            ).fillna(0)
+            ld_plot_data.append({
+                "x": ld_syn.index.values,
+                "y": ld_syn.values,
+                "color": PLOT_COLORS[idx],
+                "join": True,
+                "label": stream_name
+            })
+            ld_syn.to_csv(
+                os.path.join(
+                    output_dir, stream_name + "_label_distribution.csv"
+                )
+            )
+            mae = mean_absolute_error(
+                labels_distribution_original.to_numpy(),
+                ld_syn.to_numpy()
+            )
+            # plot mae
+            ld_mae_plot_data.append({
+                "x": labels_distribution_original.index.values,
+                "y": labels_distribution_original.to_numpy() - ld_syn.to_numpy(),
+                "label": stream_name,
+                "color": PLOT_COLORS[idx],
+                "join": True
+            })
 
             logging.info("Analyzing label relationship")
-            priors, coocurrences, conditional_matrix, graph = labels_relation_graph(
+            priors, coocurrences, conditional_matrix = generate_labels_relationship(
                 y_syn.toarray(),
                 cardinalidad=cardinality,
-                print_coocurrence=False,
-                annot=False
             )
-            save_label_relationships(
+            save_labels_relationship(
                 output_dir,
                 stream_name,
                 priors,
                 coocurrences,
-                conditional_matrix,
-                graph
+                conditional_matrix
+            )
+            labels_relationship_graph(
+                plot_props={
+                    "data": conditional_matrix
+                },
+                output=os.path.join(
+                    output_dir,
+                    filename_path("relationship_graph",
+                                  stream_name, output_dir, ext="png")
+                )
             )
 
             metadata["syn_streams"].append({
@@ -256,9 +338,30 @@ def main():
 
     #### FIN STREAM ANALYSIS ######
 
-    label_skew_plot.get_figure().savefig(os.path.join(output_dir, "label_skew.png"))
-    label_distribution_plot.get_figure().savefig(
-        os.path.join(output_dir, "label_distribution.png"))
+    logging.info("Plotting Label Skew")
+    labels_skew_graph(
+        lk_plot_data,
+        title="Label Skew\n{}".format(
+            metadata["dataset"]["name"].title()
+        ),
+        output=os.path.join(output_dir, "label_skew.png")
+    )
+
+    logging.info("Plotting Label Distribution")
+    labels_distribution_graph(
+        ld_plot_data,
+        title="Label Distribution\n{}".format(
+            metadata["dataset"]["name"].title()
+        ),
+        output=os.path.join(output_dir, "label_distribution.png")
+    )
+    labels_distribution_mae_graph(
+        ld_mae_plot_data,
+        title="Label Distribution - Mean Absolute Error\n{}".format(
+            metadata["dataset"]["name"].title()
+        ),
+        output=os.path.join(output_dir, "ld_mae.png")
+    )
 
     logging.info("Saving metadata")
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as fp:
