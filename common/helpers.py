@@ -184,6 +184,8 @@ def labels_skew_graph(data, title="", output=False):
     plt.legend(handles=handles)
     if (output):
         f1.savefig(output)
+    else:
+        plt.show()
     plt.cla()
     plt.clf()
 
