@@ -11,7 +11,7 @@ import seaborn as sns
 from sklearn.metrics import mean_absolute_error
 from skmultilearn.dataset import load_dataset, load_from_arff
 from skmultiflow.data.data_stream import DataStream
-from common.helpers import generate_labels_relationship, labels_relationship_graph, generate_labels_skew, labels_skew_graph, generate_labels_distribution, labels_distribution_graph, labels_distribution_mae_graph
+from common.helpers import load_20ng_dataset, load_moa_stream, generate_labels_relationship, labels_relationship_graph, generate_labels_skew, labels_skew_graph, generate_labels_distribution, labels_distribution_graph, labels_distribution_mae_graph
 
 
 PLOT_COLORS = ["red", "blue", "green", "orange",
@@ -79,46 +79,10 @@ def save_labels_relationship(
             writer.writerow(row)
 
 
-def load_20ng_dataset():
-    abs_path = os.path.dirname(os.path.realpath(__file__))
-    arff_path = "./datasets/20NG-F.arff"
-    N_LABELS = 20
-    label_location = "start"
-    arff_file_is_sparse = False
-    X_mulan, y_mulan, feature_names, label_names = load_from_arff(
-        arff_path,
-        N_LABELS,
-        label_location=label_location,
-        load_sparse=arff_file_is_sparse,
-        return_attribute_definitions=True
-    )
-    return X_mulan, y_mulan, feature_names, label_names
-
-
 def load_given_dataset(d):
     if (d.lower() == "20ng"):
         return load_20ng_dataset()
     return load_dataset(d, 'undivided')
-
-
-def load_moa_stream(filepath, labels):
-    print("Reading original arff from path")
-    with open(filepath) as arff_file:
-        arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
-        with open("/tmp/stream", "w") as f:
-            f.write("".join(arff_file_content))
-    del arff_file_content
-    print("Reading original arff from tmp")
-    arff_path = "/tmp/stream"
-    label_location = "start"
-    arff_file_is_sparse = False
-    return load_from_arff(
-        arff_path,
-        labels,
-        label_location=label_location,
-        load_sparse=arff_file_is_sparse,
-        return_attribute_definitions=True
-    )
 
 
 def main():

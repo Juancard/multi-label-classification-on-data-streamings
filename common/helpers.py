@@ -1,4 +1,5 @@
 from skmultiflow.utils import check_random_state
+from skmultilearn.dataset import load_dataset, load_from_arff
 from sklearn.datasets import make_multilabel_classification
 import os
 import sys
@@ -15,6 +16,42 @@ from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
+
+
+def load_20ng_dataset():
+    abs_path = os.path.dirname(os.path.realpath(__file__))
+    arff_path = "./datasets/20NG-F.arff"
+    N_LABELS = 20
+    label_location = "start"
+    arff_file_is_sparse = False
+    X_mulan, y_mulan, feature_names, label_names = load_from_arff(
+        arff_path,
+        N_LABELS,
+        label_location=label_location,
+        load_sparse=arff_file_is_sparse,
+        return_attribute_definitions=True
+    )
+    return X_mulan, y_mulan, feature_names, label_names
+
+
+def load_moa_stream(filepath, labels):
+    print("Reading original arff from path")
+    with open(filepath) as arff_file:
+        arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
+        with open("/tmp/stream", "w") as f:
+            f.write("".join(arff_file_content))
+    del arff_file_content
+    print("Reading original arff from tmp")
+    arff_path = "/tmp/stream"
+    label_location = "start"
+    arff_file_is_sparse = False
+    return load_from_arff(
+        arff_path,
+        labels,
+        label_location=label_location,
+        load_sparse=arff_file_is_sparse,
+        return_attribute_definitions=True
+    )
 
 
 class MultilabelGenerator2(MultilabelGenerator):
