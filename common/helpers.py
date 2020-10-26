@@ -162,6 +162,8 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
     plt.legend(handles=handles)
     if (output):
         f1.savefig(output)
+    else:
+        plt.show()
     plt.cla()
     plt.clf()
 
@@ -208,6 +210,9 @@ def labels_distribution_mae_graph(data, title="", output=False):
     plt.legend(handles=handles)
     if (output):
         f1.savefig(output)
+    else:
+        plt.show()
+
     plt.cla()
     plt.clf()
 
@@ -248,5 +253,7 @@ def labels_relationship_graph(plot_props, title="", output=False):
     )
     if (output):
         f1.savefig(output)
+    else:
+        plt.show()
     plt.cla()
     plt.clf()
