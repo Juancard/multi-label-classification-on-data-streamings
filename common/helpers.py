@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import sparse
 
 from skmultiflow.meta import ClassifierChain
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier
