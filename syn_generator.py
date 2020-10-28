@@ -167,11 +167,11 @@ def main():
         "label": "Original"
     })
 
-    logging.info("Analyzing label distribution")
-    labels_distribution_original = generate_labels_distribution(
+    logging.info("analyzing label distribution")
+    lbo_not_scaled, labels_distribution_original = generate_labels_distribution(
         y_stream.toarray()
     )
-    labels_distribution_original.to_csv(
+    lbo_not_scaled.to_csv(
         os.path.join(
             output_dir, args.dataset + "_label_distribution.csv"
         )
@@ -181,14 +181,14 @@ def main():
         "y": labels_distribution_original.values,
         "color": "black",
         "join": True,
-        "label": "Original"
+        "label": "original"
     })
-    # Mean absolute error - graph
+    # mean absolute error - graph
     ld_mae_plot_data.append({
         "x": labels_distribution_original.index.values,
         "y": np.zeros(shape=len(labels_distribution_original)),
         "color": "black",
-        "label": "Original",
+        "label": "original",
         "join": True
     })
 
@@ -235,9 +235,15 @@ def main():
             })
 
             logging.info("Analyzing label distribution")
-            labels_distribution_syn = generate_labels_distribution(
+            lds_not_scaled, labels_distribution_syn = generate_labels_distribution(
                 y_syn.toarray())
             ld_syn = labels_distribution_syn.reindex(
+                np.arange(
+                    labels_distribution_original.index.min(),
+                    labels_distribution_original.index.max() + 1
+                )
+            ).fillna(0)
+            ld_syn_not_scaled = lds_not_scaled.reindex(
                 np.arange(
                     labels_distribution_original.index.min(),
                     labels_distribution_original.index.max() + 1
@@ -250,7 +256,7 @@ def main():
                 "join": True,
                 "label": stream_name
             })
-            ld_syn.to_csv(
+            ld_syn_not_scaled.to_csv(
                 os.path.join(
                     output_dir, stream_name + "_label_distribution.csv"
                 )

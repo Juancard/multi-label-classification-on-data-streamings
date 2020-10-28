@@ -142,7 +142,7 @@ def generate_labels_distribution(y_array, print_top=False):
     labels_distribution_scaled = (labels_distribution-0)/(
         labels_distribution.max()-0)
     #print("Número de etiquetas por instancia vs frecuencia (escalada)\n", labels_distribution_scaled)
-    return labels_distribution_scaled
+    return labels_distribution, labels_distribution_scaled
 
 
 def labels_distribution_graph(data, title="Label Distribution", output=False):
