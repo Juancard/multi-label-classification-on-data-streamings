@@ -167,7 +167,7 @@ def main():
         "label": "Original"
     })
 
-    logging.info("analyzing label distribution")
+    logging.info("Analyzing label distribution")
     lbo_not_scaled, labels_distribution_original = generate_labels_distribution(
         y_stream.toarray()
     )
@@ -181,14 +181,14 @@ def main():
         "y": labels_distribution_original.values,
         "color": "black",
         "join": True,
-        "label": "original"
+        "label": "Original"
     })
-    # mean absolute error - graph
+    # Mean absolute error - graph
     ld_mae_plot_data.append({
         "x": labels_distribution_original.index.values,
         "y": np.zeros(shape=len(labels_distribution_original)),
         "color": "black",
-        "label": "original",
+        "label": "Original",
         "join": True
     })
 
