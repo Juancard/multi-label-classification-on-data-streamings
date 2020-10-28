@@ -257,3 +257,27 @@ def labels_relationship_graph(plot_props, title="", output=False):
         plt.show()
     plt.cla()
     plt.clf()
+
+
+def top_features(X, y, labels_names, features_names, labels=[], top=10):
+    idx_instances = np.array(range(0, X.shape[0]))
+    for i in labels:
+        label_idx = np.where(labels_names == i)[0][0]
+        label_only = y[:, label_idx]
+        label_only = label_only.toarray() if sparse.issparse(y) else label_only
+        found = np.where(label_only > 0)[0]
+        idx_instances = np.intersect1d(idx_instances, found)
+    features_sum = np.asarray(X[idx_instances].sum(axis=0)).flatten()
+    top_idx = features_sum.argsort()[-top:][::-1]
+    return features_names[top_idx]
+
+
+def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
+    def tf(labels): return top_features(
+        X, y, labels_names, features_names, labels=labels, top=top)
+    results = {}
+    results["global"] = tf([])
+    for l in labels:
+        results[l] = tf([l])
+    results[";".join(labels)] = tf(labels)
+    return pd.DataFrame.from_dict(results)
