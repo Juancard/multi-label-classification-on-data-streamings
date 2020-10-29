@@ -1,13 +1,17 @@
-from skmultiflow.utils import check_random_state
-from skmultilearn.dataset import load_dataset, load_from_arff
-from sklearn.datasets import make_multilabel_classification
+import time
 import os
 import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import sparse
+from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches
 
+from skmultilearn.dataset import load_dataset, load_from_arff
+from sklearn.datasets import make_multilabel_classification
+
+from skmultiflow.utils import check_random_state
 from skmultiflow.meta import ClassifierChain
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier
 from skmultiflow.core.pipeline import Pipeline
@@ -15,8 +19,10 @@ from sklearn.linear_model import SGDClassifier
 from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
-from matplotlib import pyplot as plt
-import matplotlib.patches as mpatches
+
+from sklearn.metrics import mean_absolute_error, accuracy_score, jaccard_score, hamming_loss, precision_recall_fscore_support, log_loss
+from skmultiflow.metrics import hamming_score, exact_match, j_index
+from skmultilearn.utils import measure_per_label
 
 
 def load_20ng_dataset():
@@ -106,15 +112,96 @@ class ConceptDriftStream2(ConceptDriftStream):
         return self.current_sample_x, self.current_sample_y
 
 
-def evaluar(stream, model, pretrain_size=0.1):
+def label_based_accuracy(y_true, y_pred, normalize=True, sample_weight=None):
+    '''
+    Compute the label-based accuracy for the multi-label case
+    http://stackoverflow.com/q/32239577/395857
+    '''
+    acc_list = []
+    for i in range(y_true.shape[0]):
+        set_true = set(np.where(y_true[i])[0])
+        set_pred = set(np.where(y_pred[i])[0])
+        #print('\nset_true: {0}'.format(set_true))
+        #print('set_pred: {0}'.format(set_pred))
+        tmp_a = None
+        if len(set_true) == 0 and len(set_pred) == 0:
+            tmp_a = 1
+        else:
+            tmp_a = len(set_true.intersection(set_pred)) /\
+                float(len(set_true.union(set_pred)))
+        #print('tmp_a: {0}'.format(tmp_a))
+        acc_list.append(tmp_a)
+    return np.mean(acc_list)
+
+
+def evaluar(stream, model, pretrain_size=0.1, window_size=20):
     stream.restart()
+
+    pretrain_size = round(stream.n_remaining_samples() * pretrain_size)
+    print("Pretrain size: ", pretrain_size)
+    start_time = time.time()
+
+    # Pre training the classifier
+    X, y = stream.next_sample(pretrain_size)
+    model.partial_fit(X, y, classes=stream.target_values)
+
+    print("Train size: ", stream.n_remaining_samples())
+    batch_size = round(stream.n_remaining_samples() / window_size)
+    print("Batch size: ", batch_size)
+
+    # Keeping track of sample count, true labels and predictions to later
+    # compute the classifier's hamming score
+    iterations = 0
+    true_labels = []
+    predicts = []
+
+    while stream.has_more_samples():
+        X, y = stream.next_sample(batch_size)
+        y_pred = model.predict(X)
+        model.partial_fit(X, y)
+        predicts.extend(y_pred)
+        true_labels.extend(y)
+        iterations += 1
+    end_time = time.time()
+
+    print('Iterations: ', iterations)
+    print("Hamming score: ", hamming_score(true_labels, predicts))
+    print("hamming loss: ", hamming_loss(true_labels, predicts))
+    print("Exact Match (aka, 0/1-loss): ", exact_match(true_labels, predicts))
+    print("Accuracy (exampled-based, igual que exact match): ",
+          accuracy_score(true_labels, predicts))
+    print("Accuracy (label-based): ",
+          label_based_accuracy(np.array(true_labels), np.array(predicts)))
+    print("Accuracy per label: ", measure_per_label(accuracy_score,
+                                                    sparse.csr_matrix(true_labels), sparse.csr_matrix(predicts)))
+    print("Jaccard Index: ", j_index(true_labels, predicts))
+    print("Log loss: ", log_loss(true_labels, predicts))
+    print("precision_recall_fscore_support (samples): ",
+          precision_recall_fscore_support(true_labels, predicts, average="samples"))
+    print("precision_recall_fscore_support (weighted): ",
+          precision_recall_fscore_support(true_labels, predicts, average="weighted"))
+    print("precision_recall_fscore_support (micro): ",
+          precision_recall_fscore_support(true_labels, predicts, average="micro"))
+    print("precision_recall_fscore_support (macro): ",
+          precision_recall_fscore_support(true_labels, predicts, average="macro"))
+    print("Time: {} seconds.".format(end_time - start_time))
+
+
+def evaluate_prequential(stream, model, pretrain_size=0.1, window_size=20, plot=False, output=None):
+    stream.restart()
+    pretrain_samples = round(stream.n_remaining_samples() * pretrain_size)
+    batch_size = round((stream.n_remaining_samples() -
+                        pretrain_samples) / window_size)
+    print("Pretrain size (examples):", pretrain_samples)
+    print("Batch size (examples):", batch_size)
     evaluator = EvaluatePrequential(
-        show_plot=True,
-        pretrain_size=round(stream.n_remaining_samples() * pretrain_size),
+        show_plot=plot,
+        pretrain_size=pretrain_samples,
+        batch_size=batch_size,
         max_samples=1000000,
-        metrics=["exact_match", "hamming_score",
-                 "hamming_loss", "running_time", "model_size"],
-        output_file='results_br_stream_no_drift.csv'
+        metrics=["exact_match", "hamming_score", "hamming_loss",
+                 "j_index", "running_time", "model_size"],
+        output_file=output
     )
     evaluator.evaluate(stream=stream, model=model)
 
