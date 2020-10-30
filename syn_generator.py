@@ -298,7 +298,7 @@ def main():
             )
 
             metadata["syn_streams"].append({
-                "labels": 53,
+                "labels": args.labels,
                 "stream_path": stream_path,
                 "stream_name": stream_name,
                 "y_shape": y_syn.shape,
