@@ -1,6 +1,7 @@
 import time
 import os
 import sys
+import math
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -20,7 +21,8 @@ from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 
-from sklearn.metrics import mean_absolute_error, accuracy_score, jaccard_score, hamming_loss, precision_recall_fscore_support, log_loss
+from sklearn.metrics import (mean_absolute_error, accuracy_score,
+                             jaccard_score, hamming_loss, precision_recall_fscore_support, log_loss)
 from skmultiflow.metrics import hamming_score, exact_match, j_index
 from skmultilearn.utils import measure_per_label
 
@@ -45,8 +47,8 @@ def load_moa_stream(filepath, labels):
     print("Reading original arff from path")
     with open(filepath) as arff_file:
         arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
-        with open("/tmp/stream", "w") as f:
-            f.write("".join(arff_file_content))
+    with open("/tmp/stream", "w") as f:
+        f.write("".join(arff_file_content))
     del arff_file_content
     print("Reading original arff from tmp")
     arff_path = "/tmp/stream"
@@ -77,8 +79,8 @@ class MultilabelGenerator2(MultilabelGenerator):
                               str(i) for i in range(self.n_num_features)]
         self.target_values = np.unique(self.y).tolist() if self.n_targets == 1 else \
             [np.unique(self.y[:, i]).tolist() for i in range(self.n_targets)]
-    # por alguna razón la clase MultilabelGenerator no implementa el método has_more_classes
 
+    # por alguna razón la clase MultilabelGenerator no implementa el método has_more_samples
     def has_more_samples(self):
         return self.n_remaining_samples() > 0
 
@@ -92,9 +94,9 @@ class ConceptDriftStream2(ConceptDriftStream):
 
     def next_sample(self, batch_size=1):
         """
-          Copio y pego textual de next_sample. 
-          Solo quito el planchado realizado sobre la matriz de etiquetas.
-          "self.current_sample_y.flatten()" pasa a ser "self.current_sample_y"
+        Copio y pego textual de next_sample. 
+        Solo quito el planchado realizado sobre la matriz de etiquetas.
+        "self.current_sample_y.flatten()" pasa a ser "self.current_sample_y"
         """
         self.current_sample_x = np.zeros((batch_size, self.n_features))
         self.current_sample_y = np.zeros((batch_size, self.n_targets))
@@ -134,57 +136,98 @@ def label_based_accuracy(y_true, y_pred, normalize=True, sample_weight=None):
     return np.mean(acc_list)
 
 
-def evaluar(stream, model, pretrain_size=0.1, window_size=20):
+def evaluation_metrics(true_labels, predictions, start_time, end_time):
+    evaluation = {}
+    evaluation["hamming_loss"] = hamming_loss(true_labels, predictions)
+    evaluation["exact_match (aka, 0/1-loss)"] = exact_match(true_labels,
+                                                            predictions)
+    evaluation["accuracy (exampled-based)"] = accuracy_score(true_labels, predictions)
+    evaluation["accuracy (label-based): "] = label_based_accuracy(
+        np.array(true_labels), np.array(predictions))
+    evaluation["accuracy_per_label"] = measure_per_label(
+        accuracy_score,
+        sparse.csr_matrix(true_labels),
+        sparse.csr_matrix(predictions)
+    )
+    evaluation["jaccard_index"] = j_index(true_labels, predictions)
+    evaluation["log_loss"] = log_loss(true_labels, predictions)
+    evaluation["precision_recall_fscore_support_samples"] = precision_recall_fscore_support(
+        true_labels, predictions, average="samples"
+    )
+    evaluation["precision_recall_fscore_support_weighted"] = precision_recall_fscore_support(
+        true_labels, predictions, average="weighted"
+    )
+    evaluation["precision_recall_fscore_support_micro"] = precision_recall_fscore_support(
+        true_labels, predictions, average="micro"
+    )
+    evaluation["precision_recall_fscore_support_macro"] = precision_recall_fscore_support(
+        true_labels, predictions, average="macro"
+    )
+    evaluation["time_seconds"] = end_time - start_time
+    return evaluation
+
+
+def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, train_logs_max=5):
     stream.restart()
+    stats = {
+        "stream_name": stream.name,
+        "instances": stream.n_remaining_samples(),
+        "model_data": str(model),
+        "pretrain_size_prop": pretrain_size,
+        "pretrain_size": round(stream.n_remaining_samples() * pretrain_size),
+        "window_size": window_size
+    }
+    stats["train_size"] = stream.n_remaining_samples() - stats["pretrain_size"]
+    stats["batch_size"] = math.ceil(stats["train_size"] / window_size)
+    stats["train_logs_max"] = train_logs_max
+    log_every_iterations = math.ceil(stats["window_size"] / train_logs_max)
 
-    pretrain_size = round(stream.n_remaining_samples() * pretrain_size)
-    print("Pretrain size: ", pretrain_size)
-    start_time = time.time()
+    logging.info(stats)
 
-    # Pre training the classifier
-    X, y = stream.next_sample(pretrain_size)
-    model.partial_fit(X, y, classes=stream.target_values)
+    logging.info("Pretraining...")
+    stats["start_time"] = time.time()
 
-    print("Train size: ", stream.n_remaining_samples())
-    batch_size = round(stream.n_remaining_samples() / window_size)
-    print("Batch size: ", batch_size)
+    try:
+        # Pre training the classifier
+        X, y = stream.next_sample(stats["pretrain_size"])
+        model.partial_fit(X, y, classes=stream.target_values)
 
-    # Keeping track of sample count, true labels and predictions to later
-    # compute the classifier's hamming score
-    iterations = 0
-    true_labels = []
-    predicts = []
+        # Keeping track of sample count, true labels and predictions to later
+        # compute the classifier's hamming score
+        iterations = 0
+        true_labels = []
+        predictions = []
+        end_time = None
 
-    while stream.has_more_samples():
-        X, y = stream.next_sample(batch_size)
-        y_pred = model.predict(X)
-        model.partial_fit(X, y)
-        predicts.extend(y_pred)
-        true_labels.extend(y)
-        iterations += 1
-    end_time = time.time()
-
-    print('Iterations: ', iterations)
-    print("Hamming score: ", hamming_score(true_labels, predicts))
-    print("hamming loss: ", hamming_loss(true_labels, predicts))
-    print("Exact Match (aka, 0/1-loss): ", exact_match(true_labels, predicts))
-    print("Accuracy (exampled-based, igual que exact match): ",
-          accuracy_score(true_labels, predicts))
-    print("Accuracy (label-based): ",
-          label_based_accuracy(np.array(true_labels), np.array(predicts)))
-    print("Accuracy per label: ", measure_per_label(accuracy_score,
-                                                    sparse.csr_matrix(true_labels), sparse.csr_matrix(predicts)))
-    print("Jaccard Index: ", j_index(true_labels, predicts))
-    print("Log loss: ", log_loss(true_labels, predicts))
-    print("precision_recall_fscore_support (samples): ",
-          precision_recall_fscore_support(true_labels, predicts, average="samples"))
-    print("precision_recall_fscore_support (weighted): ",
-          precision_recall_fscore_support(true_labels, predicts, average="weighted"))
-    print("precision_recall_fscore_support (micro): ",
-          precision_recall_fscore_support(true_labels, predicts, average="micro"))
-    print("precision_recall_fscore_support (macro): ",
-          precision_recall_fscore_support(true_labels, predicts, average="macro"))
-    print("Time: {} seconds.".format(end_time - start_time))
+        logging.info("Training...")
+        while stream.has_more_samples():
+            X, y = stream.next_sample(stats["batch_size"])
+            y_pred = model.predict(X)
+            model.partial_fit(X, y)
+            predictions.extend(y_pred)
+            true_labels.extend(y)
+            if iterations % log_every_iterations == 0:
+                logging.info(
+                    "%s / %s trained samples.",
+                    (iterations + 1) * stats["batch_size"],
+                    stats["train_size"]
+                )
+            iterations += 1
+        end_time = time.time()
+        logging.info("All samples trained successfully")
+        stats["success"] = True
+        stats["error"] = False
+    except Exception as e:
+        end_time = time.time()
+        logging.error(e)
+        stats["success"] = False
+        stats["error"] = e
+        true_labels = None
+        predictions = None
+    finally:
+        stats["end_time"] = end_time
+        stats["time_seconds"] = end_time - start_time
+        return stats, true_labels, predictions
 
 
 def evaluate_prequential(stream, model, pretrain_size=0.1, window_size=20, plot=False, output=None):
@@ -369,3 +412,19 @@ def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
         results[l] = tf([l])
     results[";".join(labels)] = tf(labels)
     return pd.DataFrame.from_dict(results)
+
+
+def repeatInstances(X, y, copies=2, batches=1):
+    X_repeat = np.vstack(
+        np.array([
+            np.tile(i, (copies, 1))
+            for i in np.array_split(X, batches)
+        ])
+    )
+    y_repeat = np.vstack(
+        np.array([
+            np.tile(i, (copies, 1))
+            for i in np.array_split(y, batches)
+        ])
+    )
+    return X_repeat, y_repeat
