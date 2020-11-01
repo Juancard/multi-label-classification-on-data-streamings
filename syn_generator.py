@@ -1,18 +1,19 @@
 import sys
 import os
-import numpy as np
 import argparse
-from toolz import pipe, curry
 import time
 import csv
 import json
 import logging
-import seaborn as sns
+import numpy as np
+from toolz import pipe, curry
 from sklearn.metrics import mean_absolute_error
-from skmultilearn.dataset import load_dataset, load_from_arff
+from skmultilearn.dataset import load_dataset
 from skmultiflow.data.data_stream import DataStream
-from common.helpers import load_20ng_dataset, load_moa_stream, generate_labels_relationship, labels_relationship_graph, generate_labels_skew, labels_skew_graph, generate_labels_distribution, labels_distribution_graph, labels_distribution_mae_graph
-
+from common.helpers import (load_20ng_dataset, load_moa_stream, generate_labels_relationship,
+                            labels_relationship_graph, generate_labels_skew, labels_skew_graph,
+                            generate_labels_distribution, labels_distribution_graph,
+                            labels_distribution_mae_graph)
 
 PLOT_COLORS = ["red", "blue", "green", "orange",
                "violet", "yellow", "brown", "gray"]
@@ -29,12 +30,12 @@ parser.add_argument("-o", "--output", help="Directory to save output.",
                     default="experiments/{}_syn".format(time.strftime("%Y%m%d%H%M%S")))
 
 
-def setLogger():
+def set_logger():
     """
     To print logs
     """
     logging.basicConfig(level=logging.INFO)
-    logFormatter = logging.Formatter(
+    logging.Formatter(
         "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
     return logging
 
@@ -80,13 +81,13 @@ def save_labels_relationship(
 
 
 def load_given_dataset(d):
-    if (d.lower() == "20ng"):
+    if d.lower() == "20ng":
         return load_20ng_dataset()
     return load_dataset(d, 'undivided')
 
 
 def main():
-    logging = setLogger()
+    logging = set_logger()
     args = parser.parse_args()
     dir_path = os.path.dirname(os.path.realpath(__file__))
     to_absolute = curry(to_absolute_path)(dir_path)
@@ -107,22 +108,22 @@ def main():
 
     if not args.dataset:
         print("Dataset not provided. Exiting.")
-        exit(0)
+        sys.exit(0)
 
     #### DATASET ANALYSIS ######
 
-    logging.info("Analyzing dataset {}".format(args.dataset))
-    logging.info("Loading dataset: {}".format(args.dataset))
-    X_stream, y_stream, feature_names, label_names = load_given_dataset(
+    logging.info("Analyzing dataset %s", args.dataset)
+    logging.info("Loading dataset: %s", args.dataset)
+    x_stream, y_stream, _, label_names = load_given_dataset(
         args.dataset)
-    data_stream = DataStream(data=X_stream.todense(),
+    data_stream = DataStream(data=x_stream.todense(),
                              y=y_stream.todense(), name=args.dataset)
     cardinality = sum(np.sum(y_stream.toarray(), axis=1)
                       ) / y_stream.toarray().shape[0]
     metadata["dataset"] = {
         "name": args.dataset,
         "instances": data_stream.n_remaining_samples(),
-        "X_shape": X_stream.shape,
+        "X_shape": x_stream.shape,
         "y_shape": y_stream.shape,
         "cardinality": cardinality,
         "label_names": [i[0] for i in label_names]
@@ -193,7 +194,7 @@ def main():
     })
 
     # Limpia memoria
-    del X_stream, y_stream, data_stream
+    del x_stream, y_stream, data_stream
 
     #### FIN DATASET ANALYSIS ######
 
@@ -204,13 +205,13 @@ def main():
         if len(stream_names) != len(args.streams):
             logging.error(
                 "La cantidad de streams y la cantidad de nombres de streams no coinciden.")
-            exit(1)
+            sys.exit(1)
         metadata["syn_streams"] = []
         for idx, i in enumerate(args.streams):
             stream_path = to_absolute(i)
             stream_name = stream_names[idx]
 
-            logging.info("Analyzing syn stream: {}".format(stream_name))
+            logging.info("Analyzing syn stream: %s", stream_name)
 
             logging.info("Loading syn stream to memory")
             _, y_syn, _, _ = load_moa_stream(stream_path, args.labels)
@@ -336,7 +337,7 @@ def main():
     logging.info("Saving metadata")
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as fp:
         json.dump(metadata, fp, indent=4)
-    logging.info("Files saved in {}".format(output_dir))
+    logging.info("Files saved in %s", output_dir)
 
 
 if __name__ == "__main__":
