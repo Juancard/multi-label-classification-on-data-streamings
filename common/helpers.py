@@ -23,13 +23,12 @@ from skmultilearn.utils import measure_per_label
 
 
 def load_20ng_dataset():
-    abs_path = os.path.dirname(os.path.realpath(__file__))
-    arff_path = "datasets/20NG-F.arff"
+    arff_path = "./datasets/20NG-F.arff"
     n_labels = 20
     label_location = "start"
     arff_file_is_sparse = False
     x_mulan, y_mulan, feature_names, label_names = load_from_arff(
-        os.path.join(abs_path, arff_path),
+        arff_path,
         n_labels,
         label_location=label_location,
         load_sparse=arff_file_is_sparse,
@@ -179,7 +178,7 @@ def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, trai
     stats["train_logs_max"] = train_logs_max
     log_every_iterations = math.ceil(stats["window_size"] / train_logs_max)
 
-    logging.info(stats)
+    logging.debug(stats)
 
     logging.info("Pretraining...")
     stats["start_time"] = time.time()
