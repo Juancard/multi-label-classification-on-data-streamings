@@ -5,9 +5,10 @@ import json
 import logging
 import argparse
 import numpy as np
+from functools import reduce
 from toolz import pipe, curry
 import pandas as pd
-from skmultilearn.dataset import load_dataset
+from skmultilearn.dataset import load_dataset, available_data_sets
 from skmultiflow.data.data_stream import DataStream
 
 from sklearn.linear_model import Perceptron
@@ -18,23 +19,48 @@ from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier
 from common.helpers import (load_20ng_dataset, load_moa_stream,
                             evaluar, evaluation_metrics, repeatInstances)
 
+CURRENT_TIME = time.strftime("%Y%m%d%H%M%S")
+SUPPORTED_MODELS = {
+    "br": {
+        "name": "Binary Relevance",
+        "model": lambda _: MultiOutputLearner(Perceptron())
+    },
+    "cc": {
+        "name": "Classifier Chain",
+        "model": lambda _: ClassifierChain(Perceptron())
+    },
+    "lcht": {
+        "name": "Label Combination Hoeffding Tree",
+        "model": lambda data_stream: LabelCombinationHoeffdingTreeClassifier(
+            n_labels=data_stream.n_targets
+        )
+    },
+}
+DEFAULT_DATASETS = ["enron", "mediamill", "20NG"]
+
 parser = argparse.ArgumentParser("Script to classify streams")
 parser.add_argument("-e", "--experiment", help="Description of the experiment")
-parser.add_argument("-d", "--dataset", help="Name of skmultilearn dataset")
+parser.add_argument("-d", "--datasets", help="List of skmultilearn datasets (including 20NG)",
+                    nargs="*", default=DEFAULT_DATASETS)
+parser.add_argument("-m", "--models", help="List of models to train data",
+                    nargs='*', default=SUPPORTED_MODELS.keys())
 parser.add_argument("-s", "--streams", help="Path to stream", nargs='*')
 parser.add_argument("-S", "--streamsnames", help="Names of streams", nargs='*')
 parser.add_argument("-l", "--labels", type=int, help="Number of labels")
-parser.add_argument("-r", "--repetitions", type=int,
-                    help="Number of copies per instance", default=1)
+parser.add_argument("-c", "--copies", nargs="*",
+                    help="Number of copies per instance for each dataset", default=[])
 parser.add_argument("-o", "--output", help="Directory to save output.",
-                    default="experiments/{}_classification".format(time.strftime("%Y%m%d%H%M%S")))
+                    default="experiments/{}_classification".format(CURRENT_TIME))
+parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                    action="store_true")
 
 
-def set_logger():
+def set_logger(verbosity):
     """
     To print logs
     """
-    logging.basicConfig(level=logging.INFO)
+    level = logging.DEBUG if verbosity else logging.INFO
+    logging.basicConfig(level=level)
     logging.Formatter(
         "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
     return logging
@@ -63,145 +89,129 @@ def load_given_dataset(dataset):
     return load_dataset(dataset, 'undivided')
 
 
+def valid_args(args):
+    """ Validate arguments passed to this script. """
+    available_datasets = {x[0].lower() for x in available_data_sets().keys()}
+    available_datasets.add("20ng")
+    valid_dataset = True
+    for i in args.datasets:
+        if i.lower() not in available_datasets:
+            logging.error("Dataset '%s' does not exists", i)
+            valid_dataset = False
+    if not valid_dataset:
+        logging.info("Valid datasets are: %s", str(available_datasets))
+        return False
+
+    if args.copies == []:
+        args.copies = [1 for i in args.datasets]
+    if len(args.copies) != len(args.datasets):
+        logging.error(
+            "Number of copies per instance of dataset (%s) " +
+            "and number of datasets (%s) has to be equal.",
+            len(args.copies),
+            len(args.datasets)
+        )
+        return False
+    copies_are_digits = reduce(
+        lambda are_digits, copy: are_digits and copy.isdigit() and int(copy) > 0,
+        args.copies,
+        True
+    )
+    if not copies_are_digits:
+        logging.error("Copies have to be valid positive integers.")
+        return False
+
+    valid_models = True
+    for i in args.models:
+        if i.lower() not in SUPPORTED_MODELS.keys():
+            logging.error("Model not supported '%s'", i)
+            valid_models = False
+    if not valid_models:
+        logging.info("Valid models are: %s", SUPPORTED_MODELS.keys())
+        return False
+
+    return True
+
+
 def main():
-    logging = set_logger()
     args = parser.parse_args()
+    logging = set_logger(args.verbose)
+    if not valid_args(args):
+        sys.exit(0)
+
+    datasets = args.datasets
+    models = [i.lower() for i in args.models]
+    copies = [int(i) for i in args.copies]
+
     dir_path = os.path.dirname(os.path.realpath(__file__))
     to_absolute = curry(to_absolute_path)(dir_path)
-    output_dir = pipe(
-        args.output,
-        to_absolute,
-        create_path_if_not_exists
-    )
+
     metadata = {
         "experimento": args.experiment or "",
         "command": " ".join(sys.argv),
         "date": time.strftime("%Y%m%d%H%M%S"),
+        "models": models,
+        "copies": copies,
+        "datasets": []
     }
+    logging.debug(metadata)
 
-    if args.dataset:
-
-        #### DATASET CLASSIFICATION ######
-
-        logging.info("Classifying dataset %s", args.dataset)
-        logging.info("Loading dataset: %s", args.dataset)
-        x_stream, y_stream, feature_names, label_names = load_given_dataset(
-            args.dataset)
-        logging.info("Copies per instance: %s", args.repetitions)
+    #### DATASET CLASSIFICATION ######
+    all_train_data = []
+    logging.info(datasets)
+    for idx, dataset in enumerate(datasets):
+        logging.info("Classifying dataset %s", dataset)
+        logging.debug("Loading dataset: %s", dataset)
+        x_stream, y_stream, _, label_names = load_given_dataset(dataset)
+        logging.debug("Copies per instance: %s", copies[idx])
         x_stream, y_stream = repeatInstances(
-            x_stream.todense(), y_stream.todense(), copies=args.repetitions)
+            x_stream.todense(), y_stream.todense(), copies=copies[idx])
 
         data_stream = DataStream(data=x_stream,
-                                 y=y_stream, name=args.dataset)
+                                 y=y_stream, name=dataset)
         cardinality = sum(np.sum(y_stream, axis=1)
                           ) / y_stream.shape[0]
-        metadata["dataset"] = {
-            "name": args.dataset,
+        dataset_metadata = {
+            "name": dataset,
             "instances": data_stream.n_remaining_samples(),
-            "X_shape": x_stream.shape,
+            "x_shape": x_stream.shape,
             "y_shape": y_stream.shape,
             "cardinality": cardinality,
             "label_names": [i[0] for i in label_names],
-            "copies": args.repetitions
+            "copies": copies[idx]
         }
+        logging.debug(dataset_metadata)
 
-        train_stats = []
-        eval_stats = []
-
-        model = "Binary Relevance"
-        logging.info(model)
-        classifier_br = MultiOutputLearner(
-            Perceptron()
-        )
-        stats_br, true_labels, predictions = evaluar(
-            data_stream,
-            classifier_br,
-            0.1,
-            logging=logging
-        )
-        stats_br.update({"model": model})
-        train_stats.append(stats_br)
-        eval_br = {}
-        if true_labels is not None and predictions is not None:
-            logging.info("Evaluating...")
-            eval_br = evaluation_metrics(
-                true_labels,
-                predictions,
-                stats_br["start_time"],
-                stats_br["end_time"]
+        for model_id in models:
+            model = SUPPORTED_MODELS[model_id]
+            logging.info(model["name"])
+            train_data = {"model": model["name"],
+                          "stream": data_stream.name, "copies": copies[idx]}
+            train_stats, true_labels, predictions = evaluar(
+                data_stream,
+                model["model"](data_stream),
+                0.1,
+                logging=logging
             )
+            eval_stats = {}
+            if true_labels is not None and predictions is not None:
+                logging.info("Evaluating...")
+                eval_stats = evaluation_metrics(
+                    true_labels,
+                    predictions,
+                    train_stats["start_time"],
+                    train_stats["end_time"]
+                )
+            train_data.update(train_stats)
+            train_data.update(eval_stats)
+            all_train_data.append(train_data)
+            data_stream.restart()
 
-        eval_br.update({"model": model})
-        eval_stats.append(eval_br)
-        data_stream.restart()
-
-        model = "Classifier Chain"
-        logging.info(model)
-        classifier_cc = ClassifierChain(
-            Perceptron()
-        )
-        stats_cc, true_labels, predictions = evaluar(
-            data_stream,
-            classifier_cc,
-            0.1,
-            logging=logging
-        )
-        stats_cc.update({"model": model})
-        train_stats.append(stats_cc)
-        eval_cc = {}
-        if true_labels is not None and predictions is not None:
-            logging.info("Evaluating...")
-            eval_cc = evaluation_metrics(
-                true_labels, predictions, stats_cc["start_time"], stats_cc["end_time"])
-
-        eval_cc.update({"model": model})
-        eval_stats.append(eval_cc)
-        data_stream.restart()
-
-        model = "Label Combination Hoeffding Tree"
-        logging.info(model)
-        classifier_lcht = LabelCombinationHoeffdingTreeClassifier(
-            n_labels=data_stream.n_targets
-        )
-        stats_lcht, true_labels, predictions = evaluar(
-            data_stream,
-            classifier_lcht,
-            0.1,
-            logging=logging,
-            train_logs_max=20
-        )
-        stats_lcht.update({"model": model})
-        train_stats.append(stats_lcht)
-        eval_lcht = {}
-        if true_labels is not None and predictions is not None:
-            logging.info("Evaluating...")
-            eval_lcht = evaluation_metrics(
-                true_labels,
-                predictions,
-                stats_lcht["start_time"],
-                stats_lcht["end_time"]
-            )
-        eval_lcht.update({"model": model})
-        eval_stats.append(eval_lcht)
-        data_stream.restart()
-
+        metadata["datasets"].append(dataset_metadata)
         # Limpia memoria
         del x_stream, y_stream, data_stream
 
-        logging.info("Saving training stats...")
-        pd.DataFrame.from_dict(train_stats).to_csv(
-            os.path.join(
-                output_dir, args.dataset + "_train.csv"
-            )
-        )
-        logging.info("Saving evaluation results...")
-        pd.DataFrame.from_dict(eval_stats).to_csv(
-            os.path.join(
-                output_dir, args.dataset + "_eval.csv"
-            )
-        )
-
-        #### FIN DATASET CLASSIFICATION ######
+    #### FIN DATASET CLASSIFICATION ######
 
     #### STREAM ANALYSIS ######
 
@@ -235,9 +245,23 @@ def main():
 
                 #### FIN STREAM ANALYSIS ######
 
+    output_dir = pipe(
+        args.output,
+        to_absolute,
+        create_path_if_not_exists
+    )
+
+    logging.info("Saving results in a csv...")
+    pd.DataFrame.from_dict(all_train_data).to_csv(
+        os.path.join(
+            output_dir, "results.csv"
+        )
+    )
+
     logging.info("Saving metadata")
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as f_p:
         json.dump(metadata, f_p, indent=4)
+
     logging.info("Files saved in %s", output_dir)
 
 
