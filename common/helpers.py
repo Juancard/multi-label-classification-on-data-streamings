@@ -1,6 +1,5 @@
 import time
 import os
-import sys
 import math
 import numpy as np
 import pandas as pd
@@ -9,18 +8,14 @@ from scipy import sparse
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
-from skmultilearn.dataset import load_dataset, load_from_arff
+from skmultilearn.dataset import load_from_arff
 from sklearn.datasets import make_multilabel_classification
 
 from skmultiflow.utils import check_random_state
-from skmultiflow.meta import ClassifierChain
-from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier
-from skmultiflow.core.pipeline import Pipeline
-from sklearn.linear_model import SGDClassifier
 from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
-
+from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (mean_absolute_error, accuracy_score,
                              jaccard_score, hamming_loss, precision_recall_fscore_support, log_loss)
 from skmultiflow.metrics import hamming_score, exact_match, j_index
@@ -29,26 +24,26 @@ from skmultilearn.utils import measure_per_label
 
 def load_20ng_dataset():
     abs_path = os.path.dirname(os.path.realpath(__file__))
-    arff_path = "./datasets/20NG-F.arff"
-    N_LABELS = 20
+    arff_path = "datasets/20NG-F.arff"
+    n_labels = 20
     label_location = "start"
     arff_file_is_sparse = False
-    X_mulan, y_mulan, feature_names, label_names = load_from_arff(
-        arff_path,
-        N_LABELS,
+    x_mulan, y_mulan, feature_names, label_names = load_from_arff(
+        os.path.join(abs_path, arff_path),
+        n_labels,
         label_location=label_location,
         load_sparse=arff_file_is_sparse,
         return_attribute_definitions=True
     )
-    return X_mulan, y_mulan, feature_names, label_names
+    return x_mulan, y_mulan, feature_names, label_names
 
 
 def load_moa_stream(filepath, labels):
     print("Reading original arff from path")
     with open(filepath) as arff_file:
         arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
-    with open("/tmp/stream", "w") as f:
-        f.write("".join(arff_file_content))
+    with open("/tmp/stream", "w") as opened:
+        opened.write("".join(arff_file_content))
     del arff_file_content
     print("Reading original arff from tmp")
     arff_path = "/tmp/stream"
@@ -68,12 +63,14 @@ class MultilabelGenerator2(MultilabelGenerator):
     def _prepare_for_use(self):
         print("Preparando Generador Multietiquetas v2")
         self._random_state = check_random_state(self.random_state)
-        self.X, self.y = make_multilabel_classification(n_samples=self.n_samples,
-                                                        n_features=self.n_features,
-                                                        n_classes=self.n_targets,
-                                                        n_labels=self.n_labels,
-                                                        allow_unlabeled=False,  # SE AGREGA ESTA LINEA
-                                                        random_state=self._random_state)
+        self.X, self.y, _, _ = make_multilabel_classification(
+            n_samples=self.n_samples,
+            n_features=self.n_features,
+            n_classes=self.n_targets,
+            n_labels=self.n_labels,
+            allow_unlabeled=False,  # SE AGREGA ESTA LINEA
+            random_state=self._random_state
+        )
         self.target_names = ["target_" + str(i) for i in range(self.n_targets)]
         self.feature_names = ["att_num_" +
                               str(i) for i in range(self.n_num_features)]
@@ -94,7 +91,7 @@ class ConceptDriftStream2(ConceptDriftStream):
 
     def next_sample(self, batch_size=1):
         """
-        Copio y pego textual de next_sample. 
+        Copio y pego textual de next_sample.
         Solo quito el planchado realizado sobre la matriz de etiquetas.
         "self.current_sample_y.flatten()" pasa a ser "self.current_sample_y"
         """
@@ -123,15 +120,15 @@ def label_based_accuracy(y_true, y_pred, normalize=True, sample_weight=None):
     for i in range(y_true.shape[0]):
         set_true = set(np.where(y_true[i])[0])
         set_pred = set(np.where(y_pred[i])[0])
-        #print('\nset_true: {0}'.format(set_true))
-        #print('set_pred: {0}'.format(set_pred))
+        # print('\nset_true: {0}'.format(set_true))
+        # print('set_pred: {0}'.format(set_pred))
         tmp_a = None
         if len(set_true) == 0 and len(set_pred) == 0:
             tmp_a = 1
         else:
             tmp_a = len(set_true.intersection(set_pred)) /\
                 float(len(set_true.union(set_pred)))
-        #print('tmp_a: {0}'.format(tmp_a))
+        # print('tmp_a: {0}'.format(tmp_a))
         acc_list.append(tmp_a)
     return np.mean(acc_list)
 
@@ -217,16 +214,16 @@ def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, trai
         logging.info("All samples trained successfully")
         stats["success"] = True
         stats["error"] = False
-    except Exception as e:
+    except Exception as error:
         end_time = time.time()
-        logging.error(e)
+        logging.error(error)
         stats["success"] = False
-        stats["error"] = e
+        stats["error"] = error
         true_labels = None
         predictions = None
     finally:
         stats["end_time"] = end_time
-        stats["time_seconds"] = end_time - start_time
+        stats["time_seconds"] = end_time - stats["start_time"]
         return stats, true_labels, predictions
 
 
@@ -250,10 +247,13 @@ def evaluate_prequential(stream, model, pretrain_size=0.1, window_size=20, plot=
 
 
 def generate_labels_skew(y_array, print_top=False):
-    df = pd.DataFrame(y_array, columns=[i for i in range(0, y_array.shape[1])])
-    labels_set_count = df.groupby(
-        df.columns.tolist(), as_index=True).size().sort_values(ascending=False)
-    if (print_top):
+    dataframe = pd.DataFrame(
+        y_array,
+        columns=list(range(0, y_array.shape[1]))
+    )
+    labels_set_count = dataframe.groupby(
+        dataframe.columns.tolist(), as_index=True).size().sort_values(ascending=False)
+    if print_top:
         print("Top ", print_top, ": \n",
               labels_set_count[:print_top], "\n")
     labels_set_count_scaled = (labels_set_count-labels_set_count.min()) / \
@@ -262,28 +262,30 @@ def generate_labels_skew(y_array, print_top=False):
 
 
 def generate_labels_distribution(y_array, print_top=False):
-    df = pd.DataFrame(y_array, columns=[i for i in range(0, y_array.shape[1])])
-    df_count = df.sum(axis=1).value_counts()
+    dataframe = pd.DataFrame(
+        y_array,
+        columns=list(range(0, y_array.shape[1]))
+    )
+    df_count = dataframe.sum(axis=1).value_counts()
     labels_distribution = df_count.reindex(
         np.arange(df_count.index.min(), df_count.index.max() + 1)).fillna(0)
-    if (print_top):
+    if print_top:
         print("Número de etiquetas por instancia vs frecuencia - ",
               print_top, "\n", labels_distribution[:print_top], "\n")
     labels_distribution_scaled = (labels_distribution-0)/(
         labels_distribution.max()-0)
-    #print("Número de etiquetas por instancia vs frecuencia (escalada)\n", labels_distribution_scaled)
     return labels_distribution, labels_distribution_scaled
 
 
 def labels_distribution_graph(data, title="Label Distribution", output=False):
-    f1 = plt.figure(figsize=(16, 8))
-    a1 = f1.gca()
-    a1.set_title(title)
-    a1.set_xlabel('Labels Combinations')
-    a1.set_ylabel('Frequency (Scaled)')
+    fig = plt.figure(figsize=(16, 8))
+    axis = fig.gca()
+    axis.set_title(title)
+    axis.set_xlabel('Labels Combinations')
+    axis.set_ylabel('Frequency (Scaled)')
     handles = []
     for i in data:
-        sns.pointplot(**i, ax=a1)
+        sns.pointplot(**i, ax=axis)
         handles.append(
             mpatches.Patch(
                 color=i.get("color"),
@@ -291,8 +293,8 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
             )
         )
     plt.legend(handles=handles)
-    if (output):
-        f1.savefig(output)
+    if output:
+        fig.savefig(output)
     else:
         plt.show()
     plt.cla()
@@ -300,14 +302,14 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
 
 
 def labels_skew_graph(data, title="", output=False):
-    f1 = plt.figure(figsize=(16, 8))
-    a1 = f1.gca()
-    a1.set_title(title)
-    a1.set_xlabel('Top Combinations')
-    a1.set_ylabel('Frequency (Scaled)')
+    fig = plt.figure(figsize=(16, 8))
+    axis = fig.gca()
+    axis.set_title(title)
+    axis.set_xlabel('Top Combinations')
+    axis.set_ylabel('Frequency (Scaled)')
     handles = []
     for i in data:
-        sns.pointplot(**i, ax=a1)
+        sns.pointplot(**i, ax=axis)
         handles.append(
             mpatches.Patch(
                 color=i.get("color"),
@@ -315,8 +317,8 @@ def labels_skew_graph(data, title="", output=False):
             )
         )
     plt.legend(handles=handles)
-    if (output):
-        f1.savefig(output)
+    if output:
+        fig.savefig(output)
     else:
         plt.show()
     plt.cla()
@@ -324,14 +326,14 @@ def labels_skew_graph(data, title="", output=False):
 
 
 def labels_distribution_mae_graph(data, title="", output=False):
-    f1 = plt.figure(figsize=(16, 8))
-    a1 = f1.gca()
-    a1.set_title(title)
-    a1.set_xlabel('Labels Combinations')
-    a1.set_ylabel('Distance from Original Dataset')
+    fig = plt.figure(figsize=(16, 8))
+    axis = fig.gca()
+    axis.set_title(title)
+    axis.set_xlabel('Labels Combinations')
+    axis.set_ylabel('Distance from Original Dataset')
     handles = []
     for i in data:
-        sns.pointplot(**i, ax=a1)
+        sns.pointplot(**i, ax=axis)
         handles.append(
             mpatches.Patch(
                 color=i.get("color"),
@@ -339,8 +341,8 @@ def labels_distribution_mae_graph(data, title="", output=False):
             )
         )
     plt.legend(handles=handles)
-    if (output):
-        f1.savefig(output)
+    if output:
+        fig.savefig(output)
     else:
         plt.show()
 
@@ -352,12 +354,12 @@ def generate_labels_relationship(y_array, cardinalidad=False, print_coocurrence=
     # Se calcula la probabilidad condicional P(A|B)
     # p(A|B) = P(A intersect B) / P(B)
     p_b = np.sum(y_array, axis=0)
-    if (cardinalidad):
-        z = sum(p_b) / cardinalidad
-        p_b = [min(1, i) for i in np.divide(p_b, z)]
+    if cardinalidad:
+        z_value = sum(p_b) / cardinalidad
+        p_b = [min(1, i) for i in np.divide(p_b, z_value)]
     coocurrence = np.dot(y_array.T, y_array)
     # np.fill_diagonal(coocurrence,0)
-    if (print_coocurrence):
+    if print_coocurrence:
         np.set_printoptions(linewidth=120)
         print("Co-ocurrence matrix")
         print(coocurrence)
@@ -373,17 +375,17 @@ def generate_labels_relationship(y_array, cardinalidad=False, print_coocurrence=
 
 
 def labels_relationship_graph(plot_props, title="", output=False):
-    f1 = plt.figure(figsize=(24, 16))
-    a1 = f1.gca()
-    a1.set_title(title)
+    fig = plt.figure(figsize=(24, 16))
+    axis = fig.gca()
+    axis.set_title(title)
     sns.heatmap(
         linewidths=0,
         cmap=sns.color_palette("Greys_r", n_colors=100),
-        ax=a1,
+        ax=axis,
         **plot_props
     )
-    if (output):
-        f1.savefig(output)
+    if output:
+        fig.savefig(output)
     else:
         plt.show()
     plt.cla()
@@ -404,18 +406,20 @@ def top_features(X, y, labels_names, features_names, labels=[], top=10):
 
 
 def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
-    def tf(labels): return top_features(
-        X, y, labels_names, features_names, labels=labels, top=top)
+    def tf_wrapper(labels):
+        return top_features(
+            X, y, labels_names, features_names, labels=labels, top=top
+        )
     results = {}
-    results["global"] = tf([])
-    for l in labels:
-        results[l] = tf([l])
-    results[";".join(labels)] = tf(labels)
+    results["global"] = tf_wrapper([])
+    for label in labels:
+        results[label] = tf_wrapper([label])
+    results[";".join(labels)] = tf_wrapper(labels)
     return pd.DataFrame.from_dict(results)
 
 
 def repeatInstances(X, y, copies=2, batches=1):
-    X_repeat = np.vstack(
+    x_repeat = np.vstack(
         np.array([
             np.tile(i, (copies, 1))
             for i in np.array_split(X, batches)
@@ -427,4 +431,4 @@ def repeatInstances(X, y, copies=2, batches=1):
             for i in np.array_split(y, batches)
         ])
     )
-    return X_repeat, y_repeat
+    return x_repeat, y_repeat
