@@ -103,7 +103,7 @@ def valid_args(args):
         return False
 
     if args.copies == []:
-        args.copies = [1 for i in args.datasets]
+        args.copies = ["1" for i in args.datasets]
     if len(args.copies) != len(args.datasets):
         logging.error(
             "Number of copies per instance of dataset (%s) " +
