@@ -186,7 +186,10 @@ def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, trai
     try:
         # Pre training the classifier
         X, y = stream.next_sample(stats["pretrain_size"])
-        model.partial_fit(X, y, classes=stream.target_values)
+        try:
+            model.partial_fit(X, y, classes=stream.target_values)
+        except TypeError:
+            model.partial_fit(X, y)
 
         # Keeping track of sample count, true labels and predictions to later
         # compute the classifier's hamming score

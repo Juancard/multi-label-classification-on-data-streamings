@@ -14,7 +14,7 @@ from skmultiflow.data.data_stream import DataStream
 from sklearn.linear_model import Perceptron
 from skmultiflow.meta.multi_output_learner import MultiOutputLearner
 from skmultiflow.meta import ClassifierChain
-from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier
+from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier, iSOUPTreeRegressor
 
 from common.helpers import (load_20ng_dataset, load_moa_stream,
                             evaluar, evaluation_metrics, repeatInstances)
@@ -34,6 +34,10 @@ SUPPORTED_MODELS = {
         "model": lambda data_stream: LabelCombinationHoeffdingTreeClassifier(
             n_labels=data_stream.n_targets
         )
+    },
+    "isoup": {
+        "name": "iSoup-Tree",
+        "model": lambda _: iSOUPTreeRegressor()
     },
 }
 DEFAULT_DATASETS = ["enron", "mediamill", "20NG"]
@@ -68,7 +72,7 @@ def set_logger(verbosity):
 
 def to_absolute_path(dir_path, path):
     if os.path.isabs(path):
-        return path
+        return os.path.join(path)
     return os.path.join(dir_path, path)
 
 
@@ -76,6 +80,7 @@ def create_path_if_not_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
         return path
+    return path
 
 
 def filename_path(name, dataset_name, output_dir, ext="csv"):
@@ -158,7 +163,7 @@ def main():
 
     #### DATASET CLASSIFICATION ######
     all_train_data = []
-    logging.info(datasets)
+    logging.debug(datasets)
     for idx, dataset in enumerate(datasets):
         logging.info("Classifying dataset %s", dataset)
         logging.debug("Loading dataset: %s", dataset)
@@ -216,6 +221,8 @@ def main():
     #### STREAM ANALYSIS ######
 
     if args.streams:
+        print("Stream classification. Not yet implemented.")
+        sys.exit(0)
         stream_names = args.streamsnames or []
         if len(stream_names) != len(args.streams):
             logging.error(
