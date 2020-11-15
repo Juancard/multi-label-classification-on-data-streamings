@@ -62,7 +62,7 @@ class MultilabelGenerator2(MultilabelGenerator):
     def _prepare_for_use(self):
         print("Preparando Generador Multietiquetas v2")
         self._random_state = check_random_state(self.random_state)
-        self.X, self.y, _, _ = make_multilabel_classification(
+        self.X, self.y = make_multilabel_classification(
             n_samples=self.n_samples,
             n_features=self.n_features,
             n_classes=self.n_targets,
