@@ -17,7 +17,8 @@ from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (mean_absolute_error, accuracy_score,
-                             jaccard_score, hamming_loss, precision_recall_fscore_support, log_loss)
+                             jaccard_score, hamming_loss,
+                             precision_recall_fscore_support, log_loss)
 from skmultiflow.metrics import hamming_score, exact_match, j_index
 from skmultilearn.utils import measure_per_label
 
@@ -73,10 +74,13 @@ class MultilabelGenerator2(MultilabelGenerator):
         self.target_names = ["target_" + str(i) for i in range(self.n_targets)]
         self.feature_names = ["att_num_" +
                               str(i) for i in range(self.n_num_features)]
-        self.target_values = np.unique(self.y).tolist() if self.n_targets == 1 else \
+        self.target_values = np.unique(
+            self.y
+        ).tolist() if self.n_targets == 1 else \
             [np.unique(self.y[:, i]).tolist() for i in range(self.n_targets)]
 
-    # por alguna razón la clase MultilabelGenerator no implementa el método has_more_samples
+    # por alguna razón la clase MultilabelGenerator no implementa el método
+    # has_more_samples
     def has_more_samples(self):
         return self.n_remaining_samples() > 0
 
@@ -137,7 +141,9 @@ def evaluation_metrics(true_labels, predictions, start_time, end_time):
     evaluation["hamming_loss"] = hamming_loss(true_labels, predictions)
     evaluation["exact_match (aka, 0/1-loss)"] = exact_match(true_labels,
                                                             predictions)
-    evaluation["accuracy (exampled-based)"] = accuracy_score(true_labels, predictions)
+    evaluation["accuracy (exampled-based)"] = accuracy_score(
+        true_labels, predictions
+    )
     evaluation["accuracy (label-based): "] = label_based_accuracy(
         np.array(true_labels), np.array(predictions))
     evaluation["accuracy_per_label"] = measure_per_label(
@@ -147,16 +153,24 @@ def evaluation_metrics(true_labels, predictions, start_time, end_time):
     )
     evaluation["jaccard_index"] = j_index(true_labels, predictions)
     evaluation["log_loss"] = log_loss(true_labels, predictions)
-    evaluation["precision_recall_fscore_support_samples"] = precision_recall_fscore_support(
+    evaluation[
+        "precision_recall_fscore_support_samples"
+    ] = precision_recall_fscore_support(
         true_labels, predictions, average="samples"
     )
-    evaluation["precision_recall_fscore_support_weighted"] = precision_recall_fscore_support(
+    evaluation[
+        "precision_recall_fscore_support_weighted"
+    ] = precision_recall_fscore_support(
         true_labels, predictions, average="weighted"
     )
-    evaluation["precision_recall_fscore_support_micro"] = precision_recall_fscore_support(
+    evaluation[
+        "precision_recall_fscore_support_micro"
+    ] = precision_recall_fscore_support(
         true_labels, predictions, average="micro"
     )
-    evaluation["precision_recall_fscore_support_macro"] = precision_recall_fscore_support(
+    evaluation[
+        "precision_recall_fscore_support_macro"
+    ] = precision_recall_fscore_support(
         true_labels, predictions, average="macro"
     )
     evaluation["time_seconds"] = end_time - start_time
@@ -164,7 +178,8 @@ def evaluation_metrics(true_labels, predictions, start_time, end_time):
 
 
 def evaluar(
-        stream, model, pretrain_size=0.1, window_size=20, ensemble=False, logging=None, train_logs_max=5, catch_errors=False
+    stream, model, pretrain_size=0.1, window_size=20, ensemble=False,
+    logging=None, train_logs_max=5, catch_errors=False
 ):
     stream.restart()
     stats = {
@@ -231,8 +246,6 @@ def evaluar(
         stats["error"] = error
         stats["end_time"] = end_time
         stats["time_seconds"] = end_time - stats["start_time"]
-        true_labels = None
-        predictions = None
 
     if not catch_errors:
         train()
@@ -245,7 +258,8 @@ def evaluar(
     return stats, true_labels, predictions
 
 
-def evaluate_prequential(stream, model, pretrain_size=0.1, window_size=20, plot=False, output=None):
+def evaluate_prequential(stream, model, pretrain_size=0.1,
+                         window_size=20, plot=False, output=None):
     stream.restart()
     pretrain_samples = round(stream.n_remaining_samples() * pretrain_size)
     batch_size = round((stream.n_remaining_samples() -
@@ -270,7 +284,8 @@ def generate_labels_skew(y_array, print_top=False):
         columns=list(range(0, y_array.shape[1]))
     )
     labels_set_count = dataframe.groupby(
-        dataframe.columns.tolist(), as_index=True).size().sort_values(ascending=False)
+        dataframe.columns.tolist(), as_index=True
+    ).size().sort_values(ascending=False)
     if print_top:
         print("Top ", print_top, ": \n",
               labels_set_count[:print_top], "\n")
@@ -368,7 +383,8 @@ def labels_distribution_mae_graph(data, title="", output=False):
     plt.clf()
 
 
-def generate_labels_relationship(y_array, cardinalidad=False, print_coocurrence=False):
+def generate_labels_relationship(y_array, cardinalidad=False,
+                                 print_coocurrence=False):
     # Se calcula la probabilidad condicional P(A|B)
     # p(A|B) = P(A intersect B) / P(B)
     p_b = np.sum(y_array, axis=0)
