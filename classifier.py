@@ -13,8 +13,10 @@ from skmultiflow.data.data_stream import DataStream
 
 from sklearn.linear_model import Perceptron
 from skmultiflow.meta.multi_output_learner import MultiOutputLearner
-from skmultiflow.meta import ClassifierChain
-from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier, iSOUPTreeRegressor
+from skmultiflow.meta import ClassifierChain,\
+    DynamicWeightedMajorityClassifier, AccuracyWeightedEnsemble
+from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
+    iSOUPTreeRegressor
 
 from common.helpers import (load_20ng_dataset, load_moa_stream,
                             evaluar, evaluation_metrics, repeatInstances)
@@ -23,28 +25,47 @@ CURRENT_TIME = time.strftime("%Y%m%d%H%M%S")
 SUPPORTED_MODELS = {
     "br": {
         "name": "Binary Relevance",
-        "model": lambda _: MultiOutputLearner(Perceptron())
+        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "ensemble": False
     },
     "cc": {
         "name": "Classifier Chain",
-        "model": lambda _: ClassifierChain(Perceptron())
+        "model": lambda _: ClassifierChain(Perceptron()),
+        "ensemble": False
     },
     "lcht": {
         "name": "Label Combination Hoeffding Tree",
         "model": lambda data_stream: LabelCombinationHoeffdingTreeClassifier(
             n_labels=data_stream.n_targets
+        ),
+        "ensemble": False
+    },
+    "awec": {
+        "name": "Accuracy Weighted Ensemble Classifier",
+        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "ensemble": lambda model: AccuracyWeightedEnsemble(
+            base_estimator=model
+        )
+    },
+    "dwmc": {
+        "name": "Dynamically Weighted Majority Classifier",
+        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "ensemble": lambda model: DynamicWeightedMajorityClassifier(
+            base_estimator=model
         )
     },
     "isoup": {
         "name": "iSoup-Tree",
-        "model": lambda _: iSOUPTreeRegressor()
+        "model": lambda _: iSOUPTreeRegressor(),
+        "ensemble": False
     },
 }
 DEFAULT_DATASETS = ["enron", "mediamill", "20NG"]
 
 parser = argparse.ArgumentParser("Script to classify streams")
 parser.add_argument("-e", "--experiment", help="Description of the experiment")
-parser.add_argument("-d", "--datasets", help="List of skmultilearn datasets (including 20NG)",
+parser.add_argument("-d", "--datasets",
+                    help="List of skmultilearn datasets (including 20NG)",
                     nargs="*", default=DEFAULT_DATASETS)
 parser.add_argument("-m", "--models", help="List of models to train data",
                     nargs='*', default=SUPPORTED_MODELS.keys())
@@ -52,11 +73,17 @@ parser.add_argument("-s", "--streams", help="Path to stream", nargs='*')
 parser.add_argument("-S", "--streamsnames", help="Names of streams", nargs='*')
 parser.add_argument("-l", "--labels", type=int, help="Number of labels")
 parser.add_argument("-c", "--copies", nargs="*",
-                    help="Number of copies per instance for each dataset", default=[])
+                    help="Number of copies per instance for each dataset",
+                    default=[])
 parser.add_argument("-o", "--output", help="Directory to save output.",
-                    default="experiments/{}_classification".format(CURRENT_TIME))
-parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                    action="store_true")
+                    default="experiments/{}_classification".format(
+                        CURRENT_TIME
+                    ))
+parser.add_argument("-v", "--verbose",
+                    help="increase output verbosity", action="store_true")
+parser.add_argument(
+    "-f", "--catch", help="Catches errors during training",
+    action="store_true")
 
 
 def set_logger(verbosity):
@@ -118,7 +145,9 @@ def valid_args(args):
         )
         return False
     copies_are_digits = reduce(
-        lambda are_digits, copy: are_digits and copy.isdigit() and int(copy) > 0,
+        lambda are_digits, copy: are_digits and copy.isdigit() and int(
+            copy
+        ) > 0,
         args.copies,
         True
     )
@@ -161,7 +190,7 @@ def main():
     }
     logging.debug(metadata)
 
-    #### DATASET CLASSIFICATION ######
+    # DATASET CLASSIFICATION ######
     all_train_data = []
     logging.debug(datasets)
     for idx, dataset in enumerate(datasets):
@@ -196,6 +225,8 @@ def main():
                 data_stream,
                 model["model"](data_stream),
                 0.1,
+                ensemble=model["ensemble"],
+                catch_errors=args.catch,
                 logging=logging
             )
             eval_stats = {}
@@ -216,9 +247,9 @@ def main():
         # Limpia memoria
         del x_stream, y_stream, data_stream
 
-    #### FIN DATASET CLASSIFICATION ######
+    # FIN DATASET CLASSIFICATION ######
 
-    #### STREAM ANALYSIS ######
+    # STREAM ANALYSIS ######
 
     if args.streams:
         print("Stream classification. Not yet implemented.")
@@ -226,7 +257,9 @@ def main():
         stream_names = args.streamsnames or []
         if len(stream_names) != len(args.streams):
             logging.error(
-                "La cantidad de streams y la cantidad de nombres de streams no coinciden.")
+                "La cantidad de streams y la cantidad de nombres" +
+                " de streams no coinciden."
+            )
             sys.exit(1)
             metadata["syn_streams"] = []
             for idx, i in enumerate(args.streams):
@@ -250,7 +283,7 @@ def main():
                     "cardinality": cardinality,
                 })
 
-                #### FIN STREAM ANALYSIS ######
+                # FIN STREAM ANALYSIS ######
 
     output_dir = pipe(
         args.output,

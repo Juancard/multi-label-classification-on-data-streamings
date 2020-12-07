@@ -163,7 +163,9 @@ def evaluation_metrics(true_labels, predictions, start_time, end_time):
     return evaluation
 
 
-def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, train_logs_max=5):
+def evaluar(
+        stream, model, pretrain_size=0.1, window_size=20, ensemble=False, logging=None, train_logs_max=5, catch_errors=False
+):
     stream.restart()
     stats = {
         "stream_name": stream.name,
@@ -183,26 +185,29 @@ def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, trai
     logging.info("Pretraining...")
     stats["start_time"] = time.time()
 
-    try:
+    true_labels = []
+    predictions = []
+
+    def train():
         # Pre training the classifier
         X, y = stream.next_sample(stats["pretrain_size"])
-        try:
+        if ensemble:
+            model.partial_fit(
+                X, y, classes=stream.target_values)
+            model_pretrained = ensemble(model)
+        else:
             model.partial_fit(X, y, classes=stream.target_values)
-        except TypeError:
-            model.partial_fit(X, y)
+            model_pretrained = model
 
         # Keeping track of sample count, true labels and predictions to later
         # compute the classifier's hamming score
         iterations = 0
-        true_labels = []
-        predictions = []
-        end_time = None
 
         logging.info("Training...")
         while stream.has_more_samples():
             X, y = stream.next_sample(stats["batch_size"])
-            y_pred = model.predict(X)
-            model.partial_fit(X, y)
+            y_pred = model_pretrained.predict(X)
+            model_pretrained.partial_fit(X, y)
             predictions.extend(y_pred)
             true_labels.extend(y)
             if iterations % log_every_iterations == 0:
@@ -216,17 +221,28 @@ def evaluar(stream, model, pretrain_size=0.1, window_size=20, logging=None, trai
         logging.info("All samples trained successfully")
         stats["success"] = True
         stats["error"] = False
-    except Exception as error:
+        stats["end_time"] = end_time
+        stats["time_seconds"] = end_time - stats["start_time"]
+
+    def onErrorCatched(error):
         end_time = time.time()
         logging.error(error)
         stats["success"] = False
         stats["error"] = error
-        true_labels = None
-        predictions = None
-    finally:
         stats["end_time"] = end_time
         stats["time_seconds"] = end_time - stats["start_time"]
-        return stats, true_labels, predictions
+        true_labels = None
+        predictions = None
+
+    if not catch_errors:
+        train()
+    else:
+        try:
+            train()
+        except Exception as error:
+            onErrorCatched(error)
+
+    return stats, true_labels, predictions
 
 
 def evaluate_prequential(stream, model, pretrain_size=0.1, window_size=20, plot=False, output=None):
