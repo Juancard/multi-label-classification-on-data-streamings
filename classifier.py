@@ -14,7 +14,8 @@ from skmultiflow.data.data_stream import DataStream
 from sklearn.linear_model import Perceptron
 from skmultiflow.meta.multi_output_learner import MultiOutputLearner
 from skmultiflow.meta import ClassifierChain,\
-    DynamicWeightedMajorityClassifier, AccuracyWeightedEnsemble
+    AccuracyWeightedEnsemble, \
+    DynamicWeightedMajorityMultiLabel
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
     iSOUPTreeRegressor
 
@@ -39,22 +40,26 @@ SUPPORTED_MODELS = {
             n_labels=data_stream.n_targets,
             stop_mem_management=True,
             memory_estimate_period=100,
-            remove_poor_atts=False # There is a bug when True
+            remove_poor_atts=False  # There is a bug when True
         ),
         "ensemble": False
     },
     "awec": {
         "name": "Accuracy Weighted Ensemble Classifier",
         "model": lambda _: MultiOutputLearner(Perceptron()),
-        "ensemble": lambda model: AccuracyWeightedEnsemble(
+        "ensemble": lambda model, _: AccuracyWeightedEnsemble(
             base_estimator=model
         )
     },
     "dwmc": {
         "name": "Dynamically Weighted Majority Classifier",
         "model": lambda _: MultiOutputLearner(Perceptron()),
-        "ensemble": lambda model: DynamicWeightedMajorityClassifier(
-            base_estimator=model
+        "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            period=round(stream.n_remaining_samples() / 20),
+            beta=0.1,
+            n_estimators=3
         )
     },
     "isoup": {
@@ -228,15 +233,11 @@ def main():
                 data_stream,
                 model["model"](data_stream),
                 0.1,
-<<<<<<< HEAD
                 ensemble=model["ensemble"],
                 catch_errors=args.catch,
-                logging=logging
-=======
                 logging=logging,
                 train_logs_max=100000,
                 window_size=20
->>>>>>> e40b2b9... solves bug in label combination hoeffding tree classifier
             )
             eval_stats = {}
             if true_labels is not None and predictions is not None:

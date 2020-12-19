@@ -186,6 +186,7 @@ def evaluar(
         "stream_name": stream.name,
         "instances": stream.n_remaining_samples(),
         "model_data": str(model),
+        "ensemble": ensemble(model, stream) if ensemble else ensemble,
         "pretrain_size_prop": pretrain_size,
         "pretrain_size": round(stream.n_remaining_samples() * pretrain_size),
         "window_size": window_size
@@ -209,7 +210,7 @@ def evaluar(
         if ensemble:
             model.partial_fit(
                 X, y, classes=stream.target_values)
-            model_pretrained = ensemble(model)
+            model_pretrained = ensemble(model, stream)
         else:
             model.partial_fit(X, y, classes=stream.target_values)
             model_pretrained = model
