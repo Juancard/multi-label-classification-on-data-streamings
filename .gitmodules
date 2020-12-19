@@ -1,3 +1,4 @@
 [submodule "scikit-multiflow"]
 	path = scikit-multiflow
 	url = https://github.com/Juancard/scikit-multiflow.git
+	branch = master
