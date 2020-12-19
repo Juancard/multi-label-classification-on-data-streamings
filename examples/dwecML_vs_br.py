@@ -4,7 +4,7 @@
 import time
 from skmultiflow.data import MultilabelGenerator
 from skmultiflow.meta import (
-    MultiOutputLearner, DynamicWeightedMajorityClassifierML)
+    MultiOutputLearner, DynamicWeightedMajorityMultiLabel)
 from skmultiflow.bayes import NaiveBayes
 from sklearn.linear_model import Perceptron
 from skmultiflow.metrics import hamming_score
@@ -34,7 +34,7 @@ stream.restart()
 X, y = stream.next_sample(pretrain_size)
 dwm_ml_base_estimator = MultiOutputLearner(Perceptron())
 dwm_ml_base_estimator.partial_fit(X, y, classes=stream.target_values)
-dwm_ml = DynamicWeightedMajorityClassifierML(
+dwm_ml = DynamicWeightedMajorityMultiLabel(
     labels=n_labels,
     base_estimator=dwm_ml_base_estimator
 )

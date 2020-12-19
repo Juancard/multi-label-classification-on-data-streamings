@@ -6,7 +6,7 @@ import numpy as np
 from skmultiflow.data import SEAGenerator
 from skmultiflow.meta import (
     DynamicWeightedMajorityClassifier,
-    DynamicWeightedMajorityClassifierML,
+    DynamicWeightedMajorityMultiLabel,
     MultiOutputLearner
 )
 from sklearn.linear_model import Perceptron
@@ -28,7 +28,7 @@ y = np.array([y]).T
 dwm_ml_base_estimator = MultiOutputLearner(Perceptron())
 dwm_ml_base_estimator.partial_fit(
     X, y, classes=[[0, 1]])
-dwm_ml = DynamicWeightedMajorityClassifierML(
+dwm_ml = DynamicWeightedMajorityMultiLabel(
     labels=1,
     base_estimator=dwm_ml_base_estimator
 )
