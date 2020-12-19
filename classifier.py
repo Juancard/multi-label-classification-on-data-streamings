@@ -36,7 +36,10 @@ SUPPORTED_MODELS = {
     "lcht": {
         "name": "Label Combination Hoeffding Tree",
         "model": lambda data_stream: LabelCombinationHoeffdingTreeClassifier(
-            n_labels=data_stream.n_targets
+            n_labels=data_stream.n_targets,
+            stop_mem_management=True,
+            memory_estimate_period=100,
+            remove_poor_atts=False # There is a bug when True
         ),
         "ensemble": False
     },
@@ -225,9 +228,15 @@ def main():
                 data_stream,
                 model["model"](data_stream),
                 0.1,
+<<<<<<< HEAD
                 ensemble=model["ensemble"],
                 catch_errors=args.catch,
                 logging=logging
+=======
+                logging=logging,
+                train_logs_max=100000,
+                window_size=20
+>>>>>>> e40b2b9... solves bug in label combination hoeffding tree classifier
             )
             eval_stats = {}
             if true_labels is not None and predictions is not None:
