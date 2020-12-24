@@ -51,14 +51,25 @@ SUPPORTED_MODELS = {
             base_estimator=model
         )
     },
-    "dwmc": {
-        "name": "Dynamically Weighted Majority Classifier",
+    "dwmc_br": {
+        "name": "Dynamically Weighted Majority Classifier (br)",
         "model": lambda _: MultiOutputLearner(Perceptron()),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
             period=round(stream.n_remaining_samples() / 20),
-            beta=0.1,
+            beta=0.5,
+            n_estimators=3
+        )
+    },
+    "dwmc_cc": {
+        "name": "Dynamically Weighted Majority Classifier (cc)",
+        "model": lambda _: ClassifierChain(Perceptron()),
+        "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            period=round(stream.n_remaining_samples() / 20),
+            beta=0.5,
             n_estimators=3
         )
     },
