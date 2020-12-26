@@ -54,8 +54,8 @@ SUPPORTED_MODELS = {
             base_estimator=model
         )
     },
-    "me_br": {
-        "name": "Majority Ensemble Classifier (br)",
+    "me": {
+        "name": "Majority Ensemble Classifier",
         "model": lambda _: [
             ClassifierChain(Perceptron()),
             ClassifierChain(SGDClassifier(random_state=1)),
