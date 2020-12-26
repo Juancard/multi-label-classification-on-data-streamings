@@ -11,15 +11,18 @@ import pandas as pd
 from skmultilearn.dataset import load_dataset, available_data_sets
 from skmultiflow.data.data_stream import DataStream
 
-from sklearn.linear_model import Perceptron
+from sklearn.linear_model import Perceptron, SGDClassifier, LogisticRegression
 from skmultiflow.meta.multi_output_learner import MultiOutputLearner
 from skmultiflow.meta import ClassifierChain,\
     AccuracyWeightedEnsemble, \
-    DynamicWeightedMajorityMultiLabel
+    DynamicWeightedMajorityMultiLabel, \
+    MajorityEnsembleMultilabel
+from skmultiflow.bayes import NaiveBayes
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
-    iSOUPTreeRegressor
+    iSOUPTreeRegressor, \
+    HoeffdingTreeClassifier
 
-from common.helpers import (load_20ng_dataset, load_moa_stream,
+from common.helpers import (load_custom_dataset, load_moa_stream,
                             evaluar, evaluation_metrics, repeatInstances)
 
 CURRENT_TIME = time.strftime("%Y%m%d%H%M%S")
@@ -49,6 +52,22 @@ SUPPORTED_MODELS = {
         "model": lambda _: MultiOutputLearner(Perceptron()),
         "ensemble": lambda model, _: AccuracyWeightedEnsemble(
             base_estimator=model
+        )
+    },
+    "me_br": {
+        "name": "Majority Ensemble Classifier (br)",
+        "model": lambda _: [
+            ClassifierChain(Perceptron()),
+            ClassifierChain(SGDClassifier(random_state=1)),
+            MultiOutputLearner(SGDClassifier(random_state=2)),
+        ],
+        "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            base_estimators=model if isinstance(model, list) else False,
+            period=2,
+            beta=0.5,
+            n_estimators=3
         )
     },
     "dwmc_br": {
@@ -91,6 +110,8 @@ parser.add_argument("-m", "--models", help="List of models to train data",
 parser.add_argument("-s", "--streams", help="Path to stream", nargs='*')
 parser.add_argument("-S", "--streamsnames", help="Names of streams", nargs='*')
 parser.add_argument("-l", "--labels", type=int, help="Number of labels")
+parser.add_argument("-p", "--pretrainsize", type=float,
+                    help="Pretrain size proportion (default=0.1)", default=0.1)
 parser.add_argument("-c", "--copies", nargs="*",
                     help="Number of copies per instance for each dataset",
                     default=[])
@@ -136,13 +157,16 @@ def filename_path(name, dataset_name, output_dir, ext="csv"):
 
 def load_given_dataset(dataset):
     if dataset.lower() == "20ng":
-        return load_20ng_dataset()
+        return load_custom_dataset("20ng")
+    if dataset.lower() == "test":
+        return load_custom_dataset("test")
     return load_dataset(dataset, 'undivided')
 
 
 def valid_args(args):
     """ Validate arguments passed to this script. """
     available_datasets = {x[0].lower() for x in available_data_sets().keys()}
+    available_datasets.add("test")
     available_datasets.add("20ng")
     valid_dataset = True
     for i in args.datasets:
@@ -172,6 +196,15 @@ def valid_args(args):
     )
     if not copies_are_digits:
         logging.error("Copies have to be valid positive integers.")
+        return False
+
+    pretrain_size_is_prop = args.pretrainsize > 0 and args.pretrainsize < 1
+    if not pretrain_size_is_prop:
+        logging.error(
+            "Pretrain size has to be a value between 0 and 1, got {}".format(
+                args.pretrainsize
+            )
+        )
         return False
 
     valid_models = True
@@ -243,7 +276,7 @@ def main():
             train_stats, true_labels, predictions = evaluar(
                 data_stream,
                 model["model"](data_stream),
-                0.1,
+                pretrain_size=args.pretrainsize,
                 ensemble=model["ensemble"],
                 catch_errors=args.catch,
                 logging=logging,

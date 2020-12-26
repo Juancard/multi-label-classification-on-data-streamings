@@ -5,6 +5,7 @@ import time
 import numpy as np
 from skmultiflow.data import SEAGenerator
 from skmultiflow.meta import (
+    AccuracyWeightedEnsembleClassifier,
     DynamicWeightedMajorityClassifier,
     DynamicWeightedMajorityMultiLabel,
     MultiOutputLearner
@@ -22,6 +23,9 @@ stream = SEAGenerator(random_state=1)
 dwm_base_model = Perceptron()
 dwm = DynamicWeightedMajorityClassifier()
 
+# Setup Accuracy Weighted Ensemble Classifier
+awm_base_model = Perceptron()
+awm = AccuracyWeightedEnsembleClassifier()
 
 X, y = stream.next_sample(pretrain_size)
 y = np.array([y]).T
@@ -100,3 +104,5 @@ def train_ml(stream, model):
 train_ml(stream, dwm_ml)
 stream.restart()
 train(stream, dwm)
+stream.restart()
+train(stream, awm)

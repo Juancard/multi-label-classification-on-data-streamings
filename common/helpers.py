@@ -23,19 +23,33 @@ from skmultiflow.metrics import hamming_score, exact_match, j_index
 from skmultilearn.utils import measure_per_label
 
 
-def load_20ng_dataset():
-    arff_path = "./datasets/20NG-F.arff"
-    n_labels = 20
-    label_location = "start"
-    arff_file_is_sparse = False
-    x_mulan, y_mulan, feature_names, label_names = load_from_arff(
-        arff_path,
-        n_labels,
-        label_location=label_location,
-        load_sparse=arff_file_is_sparse,
-        return_attribute_definitions=True
-    )
-    return x_mulan, y_mulan, feature_names, label_names
+def load_custom_dataset(dataset_name):
+    if dataset_name == "20ng":
+        arff_path = "./datasets/20NG-F.arff"
+        n_labels = 20
+        label_location = "start"
+        arff_file_is_sparse = False
+        x_mulan, y_mulan, feature_names, label_names = load_from_arff(
+            arff_path,
+            n_labels,
+            label_location=label_location,
+            load_sparse=arff_file_is_sparse,
+            return_attribute_definitions=True
+        )
+        return x_mulan, y_mulan, feature_names, label_names
+    if dataset_name == "test":
+        arff_path = "./datasets/test.arff"
+        n_labels = 5
+        label_location = "end"
+        arff_file_is_sparse = False
+        x, y, feature_names, label_names = load_from_arff(
+            arff_path,
+            n_labels,
+            label_location=label_location,
+            load_sparse=arff_file_is_sparse,
+            return_attribute_definitions=True
+        )
+        return x, y, feature_names, label_names
 
 
 def load_moa_stream(filepath, labels):
@@ -208,9 +222,15 @@ def evaluar(
         # Pre training the classifier
         X, y = stream.next_sample(stats["pretrain_size"])
         if ensemble:
-            model.partial_fit(
-                X, y, classes=stream.target_values)
-            model_pretrained = ensemble(model, stream)
+            if isinstance(model, list):
+                models = [
+                    m.partial_fit(X, y, classes=stream.target_values)
+                    for m in model
+                ]
+                model_pretrained = ensemble(models, stream)
+            else:
+                model.partial_fit(X, y, classes=stream.target_values)
+                model_pretrained = ensemble(model, stream)
         else:
             model.partial_fit(X, y, classes=stream.target_values)
             model_pretrained = model

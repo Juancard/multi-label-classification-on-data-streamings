@@ -1,0 +1,23 @@
+@relation test
+
+@attribute 0 numeric
+@attribute 00 numeric
+@attribute 000 numeric
+@attribute comp.os_ms_windows_misc {0,1}
+@attribute religion.rmisc {0,1}
+@attribute rec.sport.baseball {0,1}
+@attribute sci.space {0,1}
+@attribute comp.sys.mac_hardware {0,1}
+
+@data
+150,230,140,1,1,1,1,1
+15,23,14,0,0,0,0,0
+15,8,17,0,1,1,0,1
+4,19,35,0,0,1,0,0
+11,9,24,0,1,1,0,0
+18,24,14,0,0,0,0,0
+16,13,24,0,1,1,0,1
+18,12,9,0,1,0,1,1
+14,13,20,0,1,1,0,0
+14,15,20,0,0,1,1,0
+14,21,210,0,0,0,0,0
