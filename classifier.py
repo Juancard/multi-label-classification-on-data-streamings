@@ -16,6 +16,7 @@ from skmultiflow.meta.multi_output_learner import MultiOutputLearner
 from skmultiflow.meta import ClassifierChain,\
     AccuracyWeightedEnsemble, \
     DynamicWeightedMajorityMultiLabel, \
+    OzaBaggingMLClassifier, \
     MajorityEnsembleMultilabel
 from skmultiflow.bayes import NaiveBayes
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
@@ -90,6 +91,20 @@ SUPPORTED_MODELS = {
             period=round(stream.n_remaining_samples() / 20),
             beta=0.5,
             n_estimators=3
+        )
+    },
+    "oza_ml_br": {
+        "name": "OzaBagging (br) / ebr",
+        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "ensemble": lambda model, stream: OzaBaggingMLClassifier(
+            base_estimator=model
+        )
+    },
+    "oza_ml_cc": {
+        "name": "OzaBagging (cc) / ecc",
+        "model": lambda _: ClassifierChain(NaiveBayes()),
+        "ensemble": lambda model, stream: OzaBaggingMLClassifier(
+            base_estimator=model
         )
     },
     "isoup": {

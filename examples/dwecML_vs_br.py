@@ -1,10 +1,12 @@
 # Example of a dynamic weighted ensemble classifier
 
 # Imports
+import ipdb
 import time
 from skmultiflow.data import MultilabelGenerator
-from skmultiflow.meta import (
-    MultiOutputLearner, DynamicWeightedMajorityMultiLabel)
+from skmultiflow.meta import (MultiOutputLearner,
+                              DynamicWeightedMajorityMultiLabel,
+                              OzaBaggingMLClassifier)
 from skmultiflow.bayes import NaiveBayes
 from sklearn.linear_model import Perceptron
 from skmultiflow.metrics import hamming_score
@@ -12,15 +14,15 @@ from skmultiflow.metrics import hamming_score
 
 # Setup a data stream
 n_features = 10
-n_labels = 2
-max_samples = 10000
+n_labels = 5
 pretrain_size = 150
+max_samples = 10000 + pretrain_size
 
 stream = MultilabelGenerator(
     n_samples=max_samples,
     random_state=1,
     n_features=n_features,
-    n_targets=2
+    n_targets=n_labels
 )
 
 # Binary Relevance Model
@@ -38,6 +40,17 @@ dwm_ml = DynamicWeightedMajorityMultiLabel(
     labels=n_labels,
     base_estimator=dwm_ml_base_estimator
 )
+
+stream.restart()
+
+# OzaBaggingMLClassifier
+X, y = stream.next_sample(pretrain_size)
+oza_ml_base_estimator = MultiOutputLearner(NaiveBayes())
+oza_ml_base_estimator.partial_fit(X, y, classes=stream.target_values)
+oza_ml = OzaBaggingMLClassifier(
+    base_estimator=oza_ml_base_estimator
+)
+oza_ml.partial_fit(X, y, classes=stream.target_values)
 
 
 def train(stream, model, ensemble=False):
@@ -71,5 +84,6 @@ def train(stream, model, ensemble=False):
     stream.restart()
 
 
-train(stream, dwm_ml)
+# train(stream, dwm_ml)
 train(stream, br)
+train(stream, oza_ml)

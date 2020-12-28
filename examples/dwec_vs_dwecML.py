@@ -8,7 +8,8 @@ from skmultiflow.meta import (
     AccuracyWeightedEnsembleClassifier,
     DynamicWeightedMajorityClassifier,
     DynamicWeightedMajorityMultiLabel,
-    MultiOutputLearner
+    MultiOutputLearner,
+    OzaBaggingMLClassifier
 )
 from sklearn.linear_model import Perceptron
 from skmultiflow.metrics import hamming_score
@@ -27,8 +28,17 @@ dwm = DynamicWeightedMajorityClassifier()
 awm_base_model = Perceptron()
 awm = AccuracyWeightedEnsembleClassifier()
 
+# Pretrain
 X, y = stream.next_sample(pretrain_size)
 y = np.array([y]).T
+
+# Setup OzaBagging
+oza_base_estimator = MultiOutputLearner(Perceptron())
+oza_base_estimator.partial_fit(
+    X, y, classes=[[0, 1]])
+oza = OzaBaggingMLClassifier(base_estimator=oza_base_estimator)
+
+# Setup DWME_ML
 dwm_ml_base_estimator = MultiOutputLearner(Perceptron())
 dwm_ml_base_estimator.partial_fit(
     X, y, classes=[[0, 1]])
@@ -101,8 +111,10 @@ def train_ml(stream, model):
     stream.restart()
 
 
-train_ml(stream, dwm_ml)
+# train_ml(stream, dwm_ml)
+# stream.restart()
+# train(stream, dwm)
+# stream.restart()
+# train(stream, awm)
 stream.restart()
-train(stream, dwm)
-stream.restart()
-train(stream, awm)
+train(stream, oza)
