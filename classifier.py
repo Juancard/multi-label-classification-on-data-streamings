@@ -97,14 +97,16 @@ SUPPORTED_MODELS = {
         "name": "OzaBagging (br) / ebr",
         "model": lambda _: MultiOutputLearner(NaiveBayes()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
-            base_estimator=model
+            base_estimator=model,
+            n_estimators=3
         )
     },
     "oza_ml_cc": {
         "name": "OzaBagging (cc) / ecc",
         "model": lambda _: ClassifierChain(NaiveBayes()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
-            base_estimator=model
+            base_estimator=model,
+            n_estimators=3
         )
     },
     "isoup": {

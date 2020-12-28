@@ -223,15 +223,22 @@ def evaluar(
         X, y = stream.next_sample(stats["pretrain_size"])
         if ensemble:
             if isinstance(model, list):
+                logging.info("Pre-training models in ensemble...")
                 models = [
                     m.partial_fit(X, y, classes=stream.target_values)
                     for m in model
                 ]
                 model_pretrained = ensemble(models, stream)
             else:
+                logging.info("Pre-training model in ensemble...")
                 model.partial_fit(X, y, classes=stream.target_values)
                 model_pretrained = ensemble(model, stream)
+            if type(model_pretrained).__name__ == 'OzaBaggingMLClassifier':
+                logging.info("Pre-training ensemble...")
+                model_pretrained.partial_fit(
+                    X, y, classes=stream.target_values)
         else:
+            logging.info("Pre-training model...")
             model.partial_fit(X, y, classes=stream.target_values)
             model_pretrained = model
 
