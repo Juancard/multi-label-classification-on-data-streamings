@@ -38,6 +38,16 @@ SUPPORTED_MODELS = {
         "model": lambda _: ClassifierChain(Perceptron()),
         "ensemble": False
     },
+    "ht_br": {
+        "name": "Hoeffding Tree on Binary Relevance",
+        "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
+        "ensemble": False
+    },
+    "ht_cc": {
+        "name": "Hoeffding Tree on Classifier Chains",
+        "model": lambda _: ClassifierChain(HoeffdingTreeClassifier()),
+        "ensemble": False
+    },
     "lcht": {
         "name": "Label Combination Hoeffding Tree",
         "model": lambda data_stream: LabelCombinationHoeffdingTreeClassifier(
@@ -93,7 +103,7 @@ SUPPORTED_MODELS = {
             n_estimators=3
         )
     },
-    "oza_ml_br": {
+    "oza_ml_br_nb": {
         "name": "OzaBagging (br) / ebr",
         "model": lambda _: MultiOutputLearner(NaiveBayes()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
@@ -101,9 +111,25 @@ SUPPORTED_MODELS = {
             n_estimators=3
         )
     },
-    "oza_ml_cc": {
+    "oza_ml_br_ht": {
+        "name": "OzaBagging (br) / ebr",
+        "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
+        "ensemble": lambda model, stream: OzaBaggingMLClassifier(
+            base_estimator=model,
+            n_estimators=3
+        )
+    },
+    "oza_ml_cc_nb": {
         "name": "OzaBagging (cc) / ecc",
         "model": lambda _: ClassifierChain(NaiveBayes()),
+        "ensemble": lambda model, stream: OzaBaggingMLClassifier(
+            base_estimator=model,
+            n_estimators=3
+        )
+    },
+    "oza_ml_cc_ht": {
+        "name": "OzaBagging (cc) / ecc",
+        "model": lambda _: ClassifierChain(HoeffdingTreeClassifier()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
             n_estimators=3
