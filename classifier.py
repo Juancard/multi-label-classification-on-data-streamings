@@ -26,7 +26,8 @@ from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
 from common.helpers import (load_custom_dataset, load_moa_stream,
                             evaluar, evaluation_metrics, repeatInstances)
 
-CURRENT_TIME = time.strftime("%Y%m%d%H%M%S")
+TIME_STR = "%Y%m%d_%H%M%S"
+
 SUPPORTED_MODELS = {
     "br": {
         "name": "Binary Relevance",
@@ -159,9 +160,7 @@ parser.add_argument("-c", "--copies", nargs="*",
                     help="Number of copies per instance for each dataset",
                     default=[])
 parser.add_argument("-o", "--output", help="Directory to save output.",
-                    default="experiments/{}_classification".format(
-                        CURRENT_TIME
-                    ))
+                    default=False)
 parser.add_argument("-v", "--verbose",
                     help="increase output verbosity", action="store_true")
 parser.add_argument(
@@ -382,8 +381,11 @@ def main():
 
                 # FIN STREAM ANALYSIS ######
 
+    default_output_path = "experiments/{}_classification".format(
+        time.strftime(TIME_STR)
+    )
     output_dir = pipe(
-        args.output,
+        args.output if args.output else default_output_path,
         to_absolute,
         create_path_if_not_exists
     )

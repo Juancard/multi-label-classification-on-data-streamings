@@ -8,6 +8,7 @@ from skmultiflow.meta import (MultiOutputLearner,
                               DynamicWeightedMajorityMultiLabel,
                               OzaBaggingMLClassifier)
 from skmultiflow.bayes import NaiveBayes
+from skmultiflow.trees import HoeffdingTreeClassifier
 from sklearn.linear_model import Perceptron
 from skmultiflow.metrics import hamming_score
 # from sklearn.linear_model import SGDClassifier
@@ -43,7 +44,7 @@ dwm_ml = DynamicWeightedMajorityMultiLabel(
 
 stream.restart()
 
-# OzaBaggingMLClassifier
+# OzaBaggingMLClassifier - NaiveBayes
 X, y = stream.next_sample(pretrain_size)
 oza_ml_base_estimator = MultiOutputLearner(NaiveBayes())
 oza_ml_base_estimator.partial_fit(X, y, classes=stream.target_values)
@@ -51,6 +52,17 @@ oza_ml = OzaBaggingMLClassifier(
     base_estimator=oza_ml_base_estimator
 )
 oza_ml.partial_fit(X, y, classes=stream.target_values)
+
+stream.restart()
+
+# OzaBaggingMLClassifier - Hoeffding Tree
+X, y = stream.next_sample(pretrain_size)
+oza_ml_ht_base_estimator = MultiOutputLearner(HoeffdingTreeClassifier())
+oza_ml_ht_base_estimator.partial_fit(X, y, classes=stream.target_values)
+oza_ml_ht = OzaBaggingMLClassifier(
+    base_estimator=oza_ml_base_estimator
+)
+oza_ml_ht.partial_fit(X, y, classes=stream.target_values)
 
 
 def train(stream, model, ensemble=False):
@@ -75,8 +87,9 @@ def train(stream, model, ensemble=False):
 
     print('{} samples analyzed.'.format(count))
     # Display results
-    print('{}: HS: {} - Time: {}s'.format(
+    print('{} ({}): HS: {} - Time: {}s'.format(
         model.get_info().split("(")[0],
+        model.base_estimator,
         perf,
         (end_time-star_time)
     ))
@@ -86,4 +99,6 @@ def train(stream, model, ensemble=False):
 
 # train(stream, dwm_ml)
 train(stream, br)
+train(stream, oza_ml)
+train(stream, oza_ml_ht)
 train(stream, oza_ml)
