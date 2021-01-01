@@ -326,7 +326,7 @@ def main():
                 window_size=20
             )
             eval_stats = {}
-            if true_labels is not None and predictions is not None:
+            if true_labels and predictions:
                 logging.info("Evaluating...")
                 eval_stats = evaluation_metrics(
                     true_labels,
