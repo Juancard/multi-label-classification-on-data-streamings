@@ -24,7 +24,8 @@ from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
     HoeffdingTreeClassifier
 
 from common.helpers import (load_custom_dataset, load_moa_stream,
-                            evaluar, evaluation_metrics, repeatInstances)
+                            evaluar, repeatInstances)
+from common.evaluation_metrics import evaluation_metrics
 
 TIME_STR = "%Y%m%d_%H%M%S"
 
@@ -207,6 +208,7 @@ def load_given_dataset(dataset):
 
 def valid_args(args):
     """ Validate arguments passed to this script. """
+    #available_datasets = set()
     available_datasets = {x[0].lower() for x in available_data_sets().keys()}
     available_datasets.add("test")
     available_datasets.add("20ng")

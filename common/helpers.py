@@ -15,12 +15,8 @@ from skmultiflow.utils import check_random_state
 from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
+from skmultiflow.utils import calculate_object_size
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import (mean_absolute_error, accuracy_score,
-                             jaccard_score, hamming_loss,
-                             precision_recall_fscore_support, log_loss)
-from skmultiflow.metrics import hamming_score, exact_match, j_index
-from skmultilearn.utils import measure_per_label
 
 
 def load_custom_dataset(dataset_name):
@@ -128,69 +124,6 @@ class ConceptDriftStream2(ConceptDriftStream):
         return self.current_sample_x, self.current_sample_y
 
 
-def label_based_accuracy(y_true, y_pred, normalize=True, sample_weight=None):
-    '''
-    Compute the label-based accuracy for the multi-label case
-    http://stackoverflow.com/q/32239577/395857
-    '''
-    acc_list = []
-    for i in range(y_true.shape[0]):
-        set_true = set(np.where(y_true[i])[0])
-        set_pred = set(np.where(y_pred[i])[0])
-        # print('\nset_true: {0}'.format(set_true))
-        # print('set_pred: {0}'.format(set_pred))
-        tmp_a = None
-        if len(set_true) == 0 and len(set_pred) == 0:
-            tmp_a = 1
-        else:
-            tmp_a = len(set_true.intersection(set_pred)) /\
-                float(len(set_true.union(set_pred)))
-        # print('tmp_a: {0}'.format(tmp_a))
-        acc_list.append(tmp_a)
-    return np.mean(acc_list)
-
-
-def evaluation_metrics(true_labels, predictions, start_time, end_time):
-    evaluation = {}
-    evaluation["hamming_loss"] = hamming_loss(true_labels, predictions)
-    evaluation["exact_match (aka, 0/1-loss)"] = exact_match(true_labels,
-                                                            predictions)
-    evaluation["accuracy (exampled-based)"] = accuracy_score(
-        true_labels, predictions
-    )
-    evaluation["accuracy (label-based): "] = label_based_accuracy(
-        np.array(true_labels), np.array(predictions))
-    evaluation["accuracy_per_label"] = measure_per_label(
-        accuracy_score,
-        sparse.csr_matrix(true_labels),
-        sparse.csr_matrix(predictions)
-    )
-    evaluation["jaccard_index"] = j_index(true_labels, predictions)
-    evaluation["log_loss"] = log_loss(true_labels, predictions)
-    evaluation[
-        "precision_recall_fscore_support_samples"
-    ] = precision_recall_fscore_support(
-        true_labels, predictions, average="samples"
-    )
-    evaluation[
-        "precision_recall_fscore_support_weighted"
-    ] = precision_recall_fscore_support(
-        true_labels, predictions, average="weighted"
-    )
-    evaluation[
-        "precision_recall_fscore_support_micro"
-    ] = precision_recall_fscore_support(
-        true_labels, predictions, average="micro"
-    )
-    evaluation[
-        "precision_recall_fscore_support_macro"
-    ] = precision_recall_fscore_support(
-        true_labels, predictions, average="macro"
-    )
-    evaluation["time_seconds"] = end_time - start_time
-    return evaluation
-
-
 def evaluar(
     stream, model, pretrain_size=0.1, window_size=20, ensemble=False,
     logging=None, train_logs_max=5, catch_errors=False
@@ -266,6 +199,7 @@ def evaluar(
         stats["error"] = False
         stats["end_time"] = end_time
         stats["time_seconds"] = end_time - stats["start_time"]
+        stats["model_size_kb"] = calculate_object_size(model_pretrained, "kB")
 
     def onErrorCatched(error):
         end_time = time.time()
@@ -274,6 +208,7 @@ def evaluar(
         stats["error"] = error
         stats["end_time"] = end_time
         stats["time_seconds"] = end_time - stats["start_time"]
+        stats["model_size_kb"] = None
 
     if not catch_errors:
         train()
