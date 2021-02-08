@@ -208,8 +208,11 @@ def load_given_dataset(dataset):
 
 def valid_args(args):
     """ Validate arguments passed to this script. """
-    #available_datasets = set()
-    available_datasets = {x[0].lower() for x in available_data_sets().keys()}
+    available_datasets = set()
+    try:
+        available_datasets = {x[0].lower() for x in available_data_sets().keys()}
+    except HTTPError:
+        logging.warning("Conection error: skmultilearn datasets are unavailable. Only local datasets will be available.")
     available_datasets.add("test")
     available_datasets.add("20ng")
     valid_dataset = True
