@@ -7,32 +7,32 @@ from skmultiflow.metrics import hamming_score, exact_match, j_index
 from skmultilearn.utils import measure_per_label
 
 
-def accuracy_eb(set_true, set_pred):
+def accuracy_eb(tp, set_true, set_pred):
     if len(set_true) == 0 and len(set_pred) == 0:
         return 1
-    return len(set_true.intersection(set_pred)) / float(len(set_true.union(set_pred)))
+    return tp / len(set_true.union(set_pred))
 
 
-def precision_eb(set_true, set_pred):
+def precision_eb(tp, set_true, set_pred):
     if len(set_pred) == 0 and len(set_true) == 0:
         return 1
     if len(set_pred) == 0 and len(set_true) != 0:
         return 0
-    return len(set_true.intersection(set_pred)) / float(len(set_pred))
+    return tp / len(set_pred)
 
 
-def recall_eb(set_true, set_pred):
+def recall_eb(tp, set_true, set_pred):
     if len(set_true) == 0 and len(set_pred) == 0:
         return 1
     if len(set_true) == 0 and len(set_pred) != 0:
         return 0
-    return len(set_true.intersection(set_pred)) / float(len(set_true))
+    return tp / len(set_true)
 
 
 def f1_eb(precision, recall):
     if precision == 0 and recall == 0:
         return 0
-    return (2 * precision * recall) / float(precision + recall)
+    return (2 * precision * recall) / (precision + recall)
 
 
 def example_based_metrics(y_true, y_pred, normalize=None, sample_weight=None):
@@ -42,9 +42,10 @@ def example_based_metrics(y_true, y_pred, normalize=None, sample_weight=None):
     for i in range(y_true.shape[0]):
         set_true = set(np.where(y_true[i])[0])
         set_pred = set(np.where(y_pred[i])[0])
-        acc_list.append(accuracy_eb(set_true, set_pred))
-        prec_list.append(precision_eb(set_true, set_pred))
-        rec_list.append(recall_eb(set_true, set_pred))
+        tp = len(set_true.intersection(set_pred))
+        acc_list.append(accuracy_eb(tp, set_true, set_pred))
+        prec_list.append(precision_eb(tp, set_true, set_pred))
+        rec_list.append(recall_eb(tp, set_true, set_pred))
     acc = np.mean(acc_list)
     prec = np.mean(prec_list)
     rec = np.mean(rec_list)
@@ -67,9 +68,10 @@ def example_based_metrics2(y_true, y_pred, normalize=None, sample_weight=None):
     for i in range(samples):
         set_true = set(np.where(y_true[i])[0])
         set_pred = set(np.where(y_pred[i])[0])
-        acc += accuracy_eb(set_true, set_pred) / samples
-        prec += precision_eb(set_true, set_pred) / samples
-        rec += recall_eb(set_true, set_pred) / samples
+        tp = len(set_true.intersection(set_pred))
+        acc += accuracy_eb(tp, set_true, set_pred) / samples
+        prec += precision_eb(tp, set_true, set_pred) / samples
+        rec += recall_eb(tp, set_true, set_pred) / samples
     f1 = f1_eb(prec, rec)
     return {
         "accuracy": acc,
