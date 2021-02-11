@@ -17,8 +17,11 @@ from skmultiflow.meta import ClassifierChain,\
     AccuracyWeightedEnsemble, \
     DynamicWeightedMajorityMultiLabel, \
     OzaBaggingMLClassifier, \
-    MajorityEnsembleMultilabel
+    MajorityEnsembleMultilabel, \
+    MonteCarloClassifierChain, \
+    ProbabilisticClassifierChain
 from skmultiflow.bayes import NaiveBayes
+from skmultiflow.neural_networks import PerceptronMask
 from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
     iSOUPTreeRegressor, \
     HoeffdingTreeClassifier
@@ -31,23 +34,43 @@ TIME_STR = "%Y%m%d_%H%M%S"
 
 SUPPORTED_MODELS = {
     "br": {
-        "name": "Binary Relevance",
+        "name": "Binary Relevance - Perceptron",
         "model": lambda _: MultiOutputLearner(Perceptron()),
         "ensemble": False
     },
-    "cc": {
-        "name": "Classifier Chain",
-        "model": lambda _: ClassifierChain(Perceptron()),
-        "ensemble": False
-    },
-    "ht_br": {
-        "name": "Hoeffding Tree on Binary Relevance",
+    "br_ht": {
+        "name": "Binary Relevance - Hoeffding Tree",
         "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
         "ensemble": False
     },
-    "ht_cc": {
-        "name": "Hoeffding Tree on Classifier Chains",
-        "model": lambda _: ClassifierChain(HoeffdingTreeClassifier()),
+    "br_nb": {
+        "name": "Binary Relevance - Naive Bayes",
+        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "ensemble": False
+    },
+    "cc": {
+        "name": "Classifier Chain - Perceptron",
+        "model": lambda _: ClassifierChain(Perceptron()),
+        "ensemble": False
+    },
+    "cc_ht": {
+        "name": "Binary Relevance - HoeffdingTreeClassifier",
+        "model": lambda _: ClassifierChain(PerceptronMask()),
+        "ensemble": False
+    },
+    "cc_nb": {
+        "name": "Classifier Chain - Naive Bayes",
+        "model": lambda _: ClassifierChain(NaiveBayes()),
+        "ensemble": False
+    },
+    "mcc": {
+        "name": "Monte Carlo Sampling Classifier Chains",
+        "model": lambda _: MonteCarloClassifierChain(),
+        "ensemble": False
+    },
+    "pcc": {
+        "name": "Probabilistic Sampling Classifier Chains",
+        "model": lambda _: ProbabilisticClassifierChain(SGDClassifier(max_iter=100, loss='log', random_state=1)),
         "ensemble": False
     },
     "lcht": {
@@ -62,7 +85,7 @@ SUPPORTED_MODELS = {
     },
     "awec": {
         "name": "Accuracy Weighted Ensemble Classifier",
-        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "model": lambda _: MultiOutputLearner(NaiveBayes()),
         "ensemble": lambda model, _: AccuracyWeightedEnsemble(
             base_estimator=model
         )
@@ -70,71 +93,88 @@ SUPPORTED_MODELS = {
     "me": {
         "name": "Majority Ensemble Classifier",
         "model": lambda _: [
-            ClassifierChain(Perceptron()),
-            ClassifierChain(SGDClassifier(random_state=1)),
-            MultiOutputLearner(SGDClassifier(random_state=2)),
+            ClassifierChain(NaiveBayes()),
+            ClassifierChain(HoeffdingTreeClassifier()),
+            MultiOutputLearner(NaiveBayes()),
         ],
         "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
             labels=stream.n_targets,
             base_estimator=model,
             base_estimators=model if isinstance(model, list) else False,
-            period=2,
+            period=round(stream.n_remaining_samples() / 20),
             beta=0.5,
             n_estimators=3
+        )
+    },
+    "me2": {
+        "name": "Majority Ensemble Classifier",
+        "model": lambda _: [
+            ClassifierChain(NaiveBayes()),
+            ClassifierChain(HoeffdingTreeClassifier()),
+            MultiOutputLearner(NaiveBayes()),
+        ],
+        "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            base_estimators=model if isinstance(model, list) else False,
+            period=round(stream.n_remaining_samples() / 20),
+            beta=0.5,
+            n_estimators=3,
+            sampling="poisson"
         )
     },
     "dwmc_br": {
         "name": "Dynamically Weighted Majority Classifier (br)",
-        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "model": lambda _: MultiOutputLearner(NaiveBayes()),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
-            period=round(stream.n_remaining_samples() / 20),
+            period=round(stream.n_remaining_samples() / (20 * 2)), # Twice every window
             beta=0.5,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "dwmc_cc": {
         "name": "Dynamically Weighted Majority Classifier (cc)",
-        "model": lambda _: ClassifierChain(Perceptron()),
+        "model": lambda _: ClassifierChain(NaiveBayes()),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
-            period=round(stream.n_remaining_samples() / 20),
+            period=round(stream.n_remaining_samples() / (20 * 2)), # Twice every window
             beta=0.5,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "oza_ml_br_nb": {
-        "name": "OzaBagging (br) / ebr",
+        "name": "OzaBagging (br) / ebr - nb",
         "model": lambda _: MultiOutputLearner(NaiveBayes()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "oza_ml_br_ht": {
-        "name": "OzaBagging (br) / ebr",
+        "name": "OzaBagging (br) / ebr - ht",
         "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "oza_ml_cc_nb": {
-        "name": "OzaBagging (cc) / ecc",
+        "name": "OzaBagging (cc) / ecc - nb",
         "model": lambda _: ClassifierChain(NaiveBayes()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "oza_ml_cc_ht": {
-        "name": "OzaBagging (cc) / ecc",
+        "name": "OzaBagging (cc) / ecc - ht",
         "model": lambda _: ClassifierChain(HoeffdingTreeClassifier()),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
-            n_estimators=3
+            n_estimators=10
         )
     },
     "isoup": {
@@ -318,7 +358,7 @@ def main():
         for model_id in models:
             model = SUPPORTED_MODELS[model_id]
             logging.info(model["name"])
-            train_data = {"model": model["name"],
+            train_data = {"model": model["name"], "model_id": model_id,
                           "stream": data_stream.name, "copies": copies[idx]}
             train_stats, true_labels, predictions = evaluar(
                 data_stream,
@@ -386,11 +426,16 @@ def main():
 
                 # FIN STREAM ANALYSIS ######
 
-    default_output_path = "experiments/{}_classification".format(
+    default_output_path = "experiments/"
+    dest_dir = "{}_classification".format(
         time.strftime(TIME_STR)
     )
+    output_rel = os.path.join(
+            args.output if args.output else default_output_path,
+            dest_dir
+    )
     output_dir = pipe(
-        args.output if args.output else default_output_path,
+        output_rel,
         to_absolute,
         create_path_if_not_exists
     )
