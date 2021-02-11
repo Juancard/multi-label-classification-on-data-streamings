@@ -160,7 +160,7 @@ def evaluar(
                 logging.info("Pre-training models in ensemble...")
                 if do_pretraining:
                     models = [
-                        m.partial_fit(X, y, classes=stream.target_values)
+                        m.partial_fit(X, y, classes=stream.target_values[0])
                         for m in model
                     ]
                     model_pretrained = ensemble(models, stream)
@@ -171,16 +171,16 @@ def evaluar(
                 model_pretrained = ensemble(model, stream)
                 if do_pretraining:
                     model_pretrained.partial_fit(
-                        X, y, classes=stream.target_values)
+                        X, y, classes=stream.target_values[0])
             else:
                 logging.info("Pre-training model in ensemble...")
                 if do_pretraining:
-                    model.partial_fit(X, y, classes=stream.target_values)
+                    model.partial_fit(X, y, classes=stream.target_values[0])
                 model_pretrained = ensemble(model, stream)
         else:
             logging.info("Pre-training model...")
             if do_pretraining:
-                model.partial_fit(X, y, classes=stream.target_values)
+                model.partial_fit(X, y, classes=stream.target_values[0])
             model_pretrained = model
 
         # Keeping track of sample count, true labels and predictions to later
