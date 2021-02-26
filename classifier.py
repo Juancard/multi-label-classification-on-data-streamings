@@ -35,32 +35,50 @@ TIME_STR = "%Y%m%d_%H%M%S"
 SUPPORTED_MODELS = {
     "br": {
         "name": "Binary Relevance - Perceptron",
-        "model": lambda _: MultiOutputLearner(Perceptron()),
+        "model": lambda data_stream: MultiOutputLearner(
+            Perceptron(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "br_ht": {
         "name": "Binary Relevance - Hoeffding Tree",
-        "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
+        "model": lambda data_stream: MultiOutputLearner(
+            HoeffdingTreeClassifier(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "br_nb": {
         "name": "Binary Relevance - Naive Bayes",
-        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "model": lambda data_stream: MultiOutputLearner(
+            NaiveBayes(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "cc": {
         "name": "Classifier Chain - Perceptron",
-        "model": lambda _: ClassifierChain(Perceptron()),
+        "model": lambda data_stream: ClassifierChain(
+            Perceptron(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "cc_ht": {
         "name": "Binary Relevance - HoeffdingTreeClassifier",
-        "model": lambda _: ClassifierChain(PerceptronMask()),
+        "model": lambda data_stream: ClassifierChain(
+            PerceptronMask(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "cc_nb": {
         "name": "Classifier Chain - Naive Bayes",
-        "model": lambda _: ClassifierChain(NaiveBayes()),
+        "model": lambda data_stream: ClassifierChain(
+            NaiveBayes(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": False
     },
     "mcc": {
@@ -85,17 +103,56 @@ SUPPORTED_MODELS = {
     },
     "awec": {
         "name": "Accuracy Weighted Ensemble Classifier",
-        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "model": lambda data_stream: MultiOutputLearner(
+            NaiveBayes(), 
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, _: AccuracyWeightedEnsemble(
             base_estimator=model
         )
     },
     "me": {
         "name": "Majority Ensemble Classifier",
-        "model": lambda _: [
-            ClassifierChain(NaiveBayes()),
-            ClassifierChain(HoeffdingTreeClassifier()),
-            MultiOutputLearner(NaiveBayes()),
+        "model": lambda data_stream: [
+            ClassifierChain(
+                NaiveBayes(),
+                n_targets=data_stream.n_targets
+            ),
+            ClassifierChain(
+                HoeffdingTreeClassifier(),
+                n_targets=data_stream.n_targets
+            ),
+            MultiOutputLearner(
+                NaiveBayes(), 
+                n_targets=data_stream.n_targets
+            ),
+        ],
+        "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            base_estimators=model if isinstance(model, list) else False,
+            period=round(stream.n_remaining_samples() / 20),
+            beta=0.5,
+            n_estimators=3
+        )
+    },
+    "me_lcht": {
+        "name": "Majority Ensemble Classifier",
+        "model": lambda data_stream: [
+            ClassifierChain(
+                NaiveBayes(),
+                n_targets=data_stream.n_targets
+            ),
+            LabelCombinationHoeffdingTreeClassifier(
+                n_labels=data_stream.n_targets,
+                stop_mem_management=True,
+                memory_estimate_period=100,
+                remove_poor_atts=False  # There is a bug when True
+            ),
+            MultiOutputLearner(
+                NaiveBayes(), 
+                n_targets=data_stream.n_targets
+            ),
         ],
         "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
             labels=stream.n_targets,
@@ -107,11 +164,47 @@ SUPPORTED_MODELS = {
         )
     },
     "me2": {
-        "name": "Majority Ensemble Classifier",
-        "model": lambda _: [
-            ClassifierChain(NaiveBayes()),
-            ClassifierChain(HoeffdingTreeClassifier()),
-            MultiOutputLearner(NaiveBayes()),
+        "name": "Majority Ensemble Classifier with poisson",
+        "model": lambda data_stream: [
+            ClassifierChain(
+                NaiveBayes(),
+                n_targets=data_stream.n_targets
+            ),
+            ClassifierChain(
+                HoeffdingTreeClassifier(),
+                n_targets=data_stream.n_targets
+            ),
+            MultiOutputLearner(
+                NaiveBayes(), n_targets=data_stream.n_targets
+            ),
+        ],
+        "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
+            labels=stream.n_targets,
+            base_estimator=model,
+            base_estimators=model if isinstance(model, list) else False,
+            period=round(stream.n_remaining_samples() / 20),
+            beta=0.5,
+            n_estimators=3,
+            sampling="poisson"
+        )
+    },
+    "me2_lcht": {
+        "name": "Majority Ensemble Classifier with poisson and lcht",
+        "model": lambda data_stream: [
+            ClassifierChain(
+                NaiveBayes(),
+                n_targets=data_stream.n_targets
+            ),
+            LabelCombinationHoeffdingTreeClassifier(
+                n_labels=data_stream.n_targets,
+                stop_mem_management=True,
+                memory_estimate_period=100,
+                remove_poor_atts=False  # There is a bug when True
+            ),
+            MultiOutputLearner(
+                NaiveBayes(),
+                n_targets=data_stream.n_targets    
+            ),
         ],
         "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
             labels=stream.n_targets,
@@ -125,7 +218,10 @@ SUPPORTED_MODELS = {
     },
     "dwmc_br": {
         "name": "Dynamically Weighted Majority Classifier (br)",
-        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "model": lambda data_stream: MultiOutputLearner(
+            NaiveBayes(), 
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
@@ -136,7 +232,10 @@ SUPPORTED_MODELS = {
     },
     "dwmc_cc": {
         "name": "Dynamically Weighted Majority Classifier (cc)",
-        "model": lambda _: ClassifierChain(NaiveBayes()),
+        "model": lambda data_stream: ClassifierChain(
+            NaiveBayes(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
@@ -147,7 +246,10 @@ SUPPORTED_MODELS = {
     },
     "oza_ml_br_nb": {
         "name": "OzaBagging (br) / ebr - nb",
-        "model": lambda _: MultiOutputLearner(NaiveBayes()),
+        "model": lambda data_stream: MultiOutputLearner(
+            NaiveBayes(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
             n_estimators=10
@@ -155,7 +257,10 @@ SUPPORTED_MODELS = {
     },
     "oza_ml_br_ht": {
         "name": "OzaBagging (br) / ebr - ht",
-        "model": lambda _: MultiOutputLearner(HoeffdingTreeClassifier()),
+        "model": lambda data_stream: MultiOutputLearner(
+            HoeffdingTreeClassifier(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
             n_estimators=10
@@ -163,7 +268,10 @@ SUPPORTED_MODELS = {
     },
     "oza_ml_cc_nb": {
         "name": "OzaBagging (cc) / ecc - nb",
-        "model": lambda _: ClassifierChain(NaiveBayes()),
+        "model": lambda data_stream: ClassifierChain(
+            NaiveBayes(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
             n_estimators=10
@@ -171,7 +279,10 @@ SUPPORTED_MODELS = {
     },
     "oza_ml_cc_ht": {
         "name": "OzaBagging (cc) / ecc - ht",
-        "model": lambda _: ClassifierChain(HoeffdingTreeClassifier()),
+        "model": lambda data_stream: ClassifierChain(
+            HoeffdingTreeClassifier(),
+            n_targets=data_stream.n_targets
+        ),
         "ensemble": lambda model, stream: OzaBaggingMLClassifier(
             base_estimator=model,
             n_estimators=10
