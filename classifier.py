@@ -8,6 +8,7 @@ import numpy as np
 from functools import reduce
 from toolz import pipe, curry
 import pandas as pd
+from urllib.error import HTTPError
 from skmultilearn.dataset import load_dataset, available_data_sets
 from skmultiflow.data.data_stream import DataStream
 
@@ -29,6 +30,7 @@ from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
 from common.helpers import (load_custom_dataset, load_moa_stream,
                             evaluar, repeatInstances)
 from common.evaluation_metrics import evaluation_metrics
+
 
 TIME_STR = "%Y%m%d_%H%M%S"
 
@@ -104,7 +106,7 @@ SUPPORTED_MODELS = {
     "awec": {
         "name": "Accuracy Weighted Ensemble Classifier",
         "model": lambda data_stream: MultiOutputLearner(
-            NaiveBayes(), 
+            NaiveBayes(),
             n_targets=data_stream.n_targets
         ),
         "ensemble": lambda model, _: AccuracyWeightedEnsemble(
@@ -123,7 +125,7 @@ SUPPORTED_MODELS = {
                 n_targets=data_stream.n_targets
             ),
             MultiOutputLearner(
-                NaiveBayes(), 
+                NaiveBayes(),
                 n_targets=data_stream.n_targets
             ),
         ],
@@ -150,7 +152,7 @@ SUPPORTED_MODELS = {
                 remove_poor_atts=False  # There is a bug when True
             ),
             MultiOutputLearner(
-                NaiveBayes(), 
+                NaiveBayes(),
                 n_targets=data_stream.n_targets
             ),
         ],
@@ -203,7 +205,7 @@ SUPPORTED_MODELS = {
             ),
             MultiOutputLearner(
                 NaiveBayes(),
-                n_targets=data_stream.n_targets    
+                n_targets=data_stream.n_targets
             ),
         ],
         "ensemble": lambda model, stream: MajorityEnsembleMultilabel(
@@ -219,13 +221,14 @@ SUPPORTED_MODELS = {
     "dwmc_br": {
         "name": "Dynamically Weighted Majority Classifier (br)",
         "model": lambda data_stream: MultiOutputLearner(
-            NaiveBayes(), 
+            NaiveBayes(),
             n_targets=data_stream.n_targets
         ),
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
-            period=round(stream.n_remaining_samples() / (20 * 2)), # Twice every window
+            period=round(stream.n_remaining_samples() / \
+                         (20 * 2)),  # Twice every window
             beta=0.5,
             n_estimators=10
         )
@@ -239,7 +242,8 @@ SUPPORTED_MODELS = {
         "ensemble": lambda model, stream: DynamicWeightedMajorityMultiLabel(
             labels=stream.n_targets,
             base_estimator=model,
-            period=round(stream.n_remaining_samples() / (20 * 2)), # Twice every window
+            period=round(stream.n_remaining_samples() / \
+                         (20 * 2)),  # Twice every window
             beta=0.5,
             n_estimators=10
         )
@@ -307,7 +311,7 @@ parser.add_argument("-s", "--streams", help="Path to stream", nargs='*')
 parser.add_argument("-S", "--streamsnames", help="Names of streams", nargs='*')
 parser.add_argument("-l", "--labels", type=int, help="Number of labels")
 parser.add_argument("-p", "--pretrainsize", type=float,
-                    help="Pretrain size proportion (default=0.1)", default=0.1)
+                    help="Pretrain size proportion (default=0)", default=0)
 parser.add_argument("-c", "--copies", nargs="*",
                     help="Number of copies per instance for each dataset",
                     default=[])
@@ -361,9 +365,11 @@ def valid_args(args):
     """ Validate arguments passed to this script. """
     available_datasets = set()
     try:
-        available_datasets = {x[0].lower() for x in available_data_sets().keys()}
+        available_datasets = {x[0].lower()
+                              for x in available_data_sets().keys()}
     except HTTPError:
-        logging.warning("Conection error: skmultilearn datasets are unavailable. Only local datasets will be available.")
+        logging.warning(
+            "Conection error: skmultilearn datasets are unavailable. Only local datasets will be available.")
     available_datasets.add("test")
     available_datasets.add("20ng")
     valid_dataset = True
@@ -396,7 +402,7 @@ def valid_args(args):
         logging.error("Copies have to be valid positive integers.")
         return False
 
-    pretrain_size_is_prop = args.pretrainsize > 0 and args.pretrainsize < 1
+    pretrain_size_is_prop = args.pretrainsize >= 0 and args.pretrainsize < 1
     if not pretrain_size_is_prop:
         logging.error(
             "Pretrain size has to be a value between 0 and 1, got {}".format(
@@ -442,6 +448,7 @@ def main():
 
     # DATASET CLASSIFICATION ######
     all_train_data = []
+    true_vs_pred = []
     logging.debug(datasets)
     for idx, dataset in enumerate(datasets):
         logging.info("Classifying dataset %s", dataset)
@@ -490,6 +497,12 @@ def main():
                     train_stats["start_time"],
                     train_stats["end_time"]
                 )
+                true_vs_pred.append({
+                    "model": model_id,
+                    "dataset": dataset,
+                    "true": true_labels,
+                    "pred": predictions
+                })
             train_data.update(train_stats)
             train_data.update(eval_stats)
             all_train_data.append(train_data)
@@ -542,8 +555,8 @@ def main():
         time.strftime(TIME_STR)
     )
     output_rel = os.path.join(
-            args.output if args.output else default_output_path,
-            dest_dir
+        args.output if args.output else default_output_path,
+        dest_dir
     )
     output_dir = pipe(
         output_rel,
@@ -557,6 +570,15 @@ def main():
             output_dir, "results.csv"
         )
     )
+
+    logging.info("Saving true_vs_pred in a csv...")
+    for i in true_vs_pred:
+        true_file = '{}_{}_true.csv'.format(i["dataset"], i["model"])
+        pred_file = '{}_{}_predicted.csv'.format(i["dataset"], i["model"])
+        np.savetxt(os.path.join(output_dir, true_file),
+                   i["true"], delimiter=',')
+        np.savetxt(os.path.join(output_dir, pred_file),
+                   i["pred"], delimiter=',')
 
     logging.info("Saving metadata")
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as f_p:
