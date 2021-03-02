@@ -19,9 +19,9 @@ from skmultiflow.utils import calculate_object_size
 from sklearn.linear_model import SGDClassifier
 
 
-def load_custom_dataset(dataset_name):
+def load_custom_dataset(dataset_name, path=None):
     if dataset_name == "20ng":
-        arff_path = "./datasets/20NG-F.arff"
+        arff_path = path if path else "./datasets/20NG-F.arff"
         n_labels = 20
         label_location = "start"
         arff_file_is_sparse = False
@@ -34,7 +34,7 @@ def load_custom_dataset(dataset_name):
         )
         return x_mulan, y_mulan, feature_names, label_names
     if dataset_name == "test":
-        arff_path = "./datasets/test.arff"
+        arff_path = path if path else "./datasets/test.arff"
         n_labels = 5
         label_location = "end"
         arff_file_is_sparse = False
@@ -145,7 +145,6 @@ def evaluar(
 
     logging.debug(stats)
 
-    logging.info("Pretraining...")
     stats["start_time"] = time.time()
 
     true_labels = []
@@ -157,8 +156,8 @@ def evaluar(
         do_pretraining = X.shape[0] > 0
         if ensemble:
             if isinstance(model, list):
-                logging.info("Pre-training models in ensemble...")
                 if do_pretraining:
+                    logging.info("Pre-training models in ensemble...")
                     [
                         m.partial_fit(X, y, classes=stream.target_values[0])
                         for m in model
@@ -167,19 +166,19 @@ def evaluar(
                 else:
                     model_pretrained = ensemble(model, stream)
             elif type(ensemble(model, stream)).__name__ == 'OzaBaggingMLClassifier':
-                logging.info("Pre-training oza...")
                 model_pretrained = ensemble(model, stream)
                 if do_pretraining:
+                    logging.info("Pre-training oza...")
                     model_pretrained.partial_fit(
                         X, y, classes=stream.target_values[0])
             else:
-                logging.info("Pre-training model in ensemble...")
                 if do_pretraining:
+                    logging.info("Pre-training model in ensemble...")
                     model.partial_fit(X, y, classes=stream.target_values[0])
                 model_pretrained = ensemble(model, stream)
         else:
-            logging.info("Pre-training model...")
             if do_pretraining:
+                logging.info("Pre-training model...")
                 model.partial_fit(X, y, classes=stream.target_values[0])
             model_pretrained = model
 
