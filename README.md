@@ -1,6 +1,7 @@
 # multi-label-classification-on-data-streamings
 
 ```bat
+git submodule update --init --recursive
 cd scikit-multiflow/
 pip install -r requirements-dev.txt
 pip install -r requirements.txt
