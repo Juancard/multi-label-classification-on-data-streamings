@@ -10,7 +10,7 @@ from toolz import pipe, curry
 from sklearn.metrics import mean_absolute_error
 from skmultilearn.dataset import load_dataset
 from skmultiflow.data.data_stream import DataStream
-from common.helpers import (load_20ng_dataset, load_moa_stream, generate_labels_relationship,
+from common.helpers import (load_custom_dataset, load_moa_stream, generate_labels_relationship,
                             labels_relationship_graph, generate_labels_skew, labels_skew_graph,
                             generate_labels_distribution, labels_distribution_graph,
                             labels_distribution_mae_graph)
@@ -82,7 +82,7 @@ def save_labels_relationship(
 
 def load_given_dataset(d):
     if d.lower() == "20ng":
-        return load_20ng_dataset()
+        return load_custom_dataset(d.lower())
     return load_dataset(d, 'undivided')
 
 
