@@ -118,14 +118,18 @@ def main():
         args.dataset)
     data_stream = DataStream(data=x_stream.todense(),
                              y=y_stream.todense(), name=args.dataset)
+    labels = y_stream.shape[1]
     cardinality = sum(np.sum(y_stream.toarray(), axis=1)
                       ) / y_stream.toarray().shape[0]
+    density = cardinality / labels
     metadata["dataset"] = {
         "name": args.dataset,
         "instances": data_stream.n_remaining_samples(),
         "X_shape": x_stream.shape,
         "y_shape": y_stream.shape,
+        "labels": labels,
         "cardinality": cardinality,
+        "density": density,
         "label_names": [i[0] for i in label_names]
     }
 
@@ -216,9 +220,11 @@ def main():
             logging.info("Loading syn stream to memory")
             _, y_syn, _, _ = load_moa_stream(stream_path, args.labels)
 
+            labels = y_stream.shape[1]
             cardinality = sum(
                 np.sum(y_syn.toarray(), axis=1)
             ) / y_syn.toarray().shape[0]
+            density = cardinality / labels
 
             logging.info("Analyzing label skew")
             labels_skew_syn = generate_labels_skew(y_syn.toarray())
@@ -299,11 +305,12 @@ def main():
             )
 
             metadata["syn_streams"].append({
-                "labels": args.labels,
                 "stream_path": stream_path,
                 "stream_name": stream_name,
                 "y_shape": y_syn.shape,
+                "labels": labels,
                 "cardinality": cardinality,
+                "density": density,
                 "labels_distribution_mean_absolute_error": mae
             })
 
