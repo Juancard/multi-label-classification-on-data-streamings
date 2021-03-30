@@ -1,0 +1,11 @@
+autopep8==1.5.4
+liac-arff
+matplotlib==3.4.0
+numpy==1.20.2
+pandas==1.1.0
+scikit-learn==0.24.1
+scikit-multilearn==0.2.0
+scipy==1.6.2
+seaborn==0.11.1
+sortedcontainers
+toolz
