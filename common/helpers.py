@@ -407,7 +407,9 @@ def top_features(X, y, labels_names, features_names, labels=[], top=10):
         idx_instances = np.intersect1d(idx_instances, found)
     features_sum = np.asarray(X[idx_instances].sum(axis=0)).flatten()
     top_idx = features_sum.argsort()[-top:][::-1]
-    return features_names[top_idx]
+    top_freqs = features_sum[np.argsort(features_sum)[-top:]][::-1]
+    top_features_name = features_names[top_idx]
+    return top_features_name, top_freqs
 
 
 def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
@@ -416,11 +418,14 @@ def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
             X, y, labels_names, features_names, labels=labels, top=top
         )
     results = {}
-    results["global"] = tf_wrapper([])
+    freqs = {}
+    results["global"], freqs["global"] = tf_wrapper([])
     for label in labels:
-        results[label] = tf_wrapper([label])
-    results[";".join(labels)] = tf_wrapper(labels)
-    return pd.DataFrame.from_dict(results)
+        results[label], freqs[label] = tf_wrapper([label])
+    labels_names_joined = ";".join(labels)
+    results[labels_names_joined], freqs[labels_names_joined] = tf_wrapper(
+        labels)
+    return pd.DataFrame.from_dict(results), pd.DataFrame.from_dict(freqs)
 
 
 def freqs_per_feature(X, y, feature_name, labels_names, features_names, labels=[], top=10):
