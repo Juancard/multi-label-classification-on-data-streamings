@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import sparse
+from scipy.stats import norm
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
@@ -420,6 +421,63 @@ def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
         results[label] = tf_wrapper([label])
     results[";".join(labels)] = tf_wrapper(labels)
     return pd.DataFrame.from_dict(results)
+
+
+def freqs_per_feature(X, y, feature_name, labels_names, features_names, labels=[], top=10):
+    feature_idx = np.where(features_names == feature_name)[0][0]
+    idx_instances = np.array(range(0, X.shape[0]))
+    for i in labels:
+        label_idx = np.where(labels_names == i)[0][0]
+        label_only = y[:, label_idx]
+        label_only = label_only.toarray() if sparse.issparse(y) else label_only
+        found = np.where(label_only > 0)[0]
+        idx_instances = np.intersect1d(idx_instances, found)
+    freqs_per_feature = X[idx_instances, feature_idx].toarray(
+    ) if sparse.issparse(X) else X[idx_instances, feature_idx]
+    return np.array(freqs_per_feature.T)[0]
+
+
+def freqs_per_feature_dict(X, y, feature_name, labels_names, features_names, labels=[], top=10):
+    def fpf_wrapper(labels):
+        return freqs_per_feature(
+            X, y, feature_name, labels_names, features_names, labels=labels, top=top
+        )
+    results = {}
+    for label in labels:
+        results[label] = fpf_wrapper([label])
+    labels_names_joined = ";".join(labels)
+    results[labels_names_joined] = fpf_wrapper(labels)
+    return results
+
+
+def features_graph(data, title="", colors=["b", "r", "g"], output=False):
+    sns.set_color_codes()
+    LABELS = list(data.keys())
+    fig = plt.figure(figsize=(16, 8))
+    axis = fig.gca()
+    axis.set_title(title)
+    #axis.set_xlabel('Top Combinations')
+    #axis.set_ylabel('Frequency (Scaled)')
+    for idx, i in enumerate(data):
+        axis = sns.distplot(
+            data[i],
+            fit=norm,
+            kde=False,
+            hist=False,
+            label=LABELS[idx],
+            fit_kws={
+                "color": colors[idx],
+                "label": LABELS[idx]
+            }
+        )
+    axis = (axis.set(xlim=(0, 2), ylim=(0, 2.5)))
+    plt.legend()
+    if output:
+        fig.savefig(output)
+    else:
+        plt.show()
+    plt.cla()
+    plt.clf()
 
 
 def repeatInstances(X, y, copies=2, batches=1):
