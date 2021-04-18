@@ -18,6 +18,7 @@ from common.helpers import (load_custom_dataset, load_moa_stream, generate_label
 PLOT_COLORS = ["red", "blue", "green", "orange",
                "violet", "yellow", "brown", "gray"]
 SKEW_TOP_COMBINATIONS = 50
+TIME_STR = "%Y%m%d_%H%M%S"
 
 parser = argparse.ArgumentParser(
     "Script to analyze a generated synthetic dataset")
@@ -27,7 +28,7 @@ parser.add_argument("-s", "--streams", help="Path to stream", nargs='*')
 parser.add_argument("-S", "--streamsnames", help="Names of streams", nargs='*')
 parser.add_argument("-l", "--labels", type=int, help="Number of labels")
 parser.add_argument("-o", "--output", help="Directory to save output.",
-                    default="experiments/{}_syn".format(time.strftime("%Y%m%d%H%M%S")))
+                    default=False)
 
 
 def set_logger():
@@ -49,6 +50,7 @@ def to_absolute_path(dir_path, path):
 def create_path_if_not_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
+        return path
     return path
 
 
@@ -86,16 +88,28 @@ def load_given_dataset(d):
     return load_dataset(d, 'undivided')
 
 
-def main():
-    logging = set_logger()
-    args = parser.parse_args()
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    to_absolute = curry(to_absolute_path)(dir_path)
-    output_dir = pipe(
-        args.output,
+dir_path = os.path.dirname(os.path.realpath(__file__))
+to_absolute = curry(to_absolute_path)(dir_path)
+
+
+def create_output_dir(output_path="experiments/", suffix="syn"):
+    dest_dir = "{}_{}".format(
+        time.strftime(TIME_STR),
+        suffix
+    )
+    output_rel = os.path.join(output_path, dest_dir)
+    return pipe(
+        output_rel,
         to_absolute,
         create_path_if_not_exists
     )
+
+
+def main():
+    logging = set_logger()
+    args = parser.parse_args()
+    output_dir = create_output_dir(
+        output_path=args.output if args.output else None)
     metadata = {
         "experimento": args.experiment or "",
         "command": " ".join(sys.argv),
@@ -220,7 +234,7 @@ def main():
             logging.info("Loading syn stream to memory")
             _, y_syn, _, _ = load_moa_stream(stream_path, args.labels)
 
-            labels = y_stream.shape[1]
+            labels = y_syn.shape[1]
             cardinality = sum(
                 np.sum(y_syn.toarray(), axis=1)
             ) / y_syn.toarray().shape[0]
