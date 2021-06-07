@@ -8,6 +8,7 @@ from scipy import sparse
 from scipy.stats import norm
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
+import uuid
 
 from skmultilearn.dataset import load_from_arff
 from sklearn.datasets import make_multilabel_classification
@@ -53,11 +54,13 @@ def load_moa_stream(filepath, labels):
     print("Reading original arff from path")
     with open(filepath) as arff_file:
         arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
-    with open("/tmp/stream", "w") as opened:
+    filename = "stream_{}".format(str(uuid.uuid1()))
+    tmp_file = "/tmp/{}".format(filename)
+    with open(tmp_file, "w") as opened:
         opened.write("".join(arff_file_content))
     del arff_file_content
     print("Reading original arff from tmp")
-    arff_path = "/tmp/stream"
+    arff_path = tmp_file
     label_location = "start"
     arff_file_is_sparse = False
     return load_from_arff(
