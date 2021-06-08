@@ -458,7 +458,7 @@ def freqs_per_feature_dict(X, y, feature_name, labels_names, features_names, lab
     return results
 
 
-def features_graph(data, title="", colors=["b", "r", "g"], output=False):
+def features_graph(data, title="", colors=["g", "r", "b"], output=False):
     sns.set_color_codes()
     LABELS = list(data.keys())
     fig = plt.figure(figsize=(16, 8))
