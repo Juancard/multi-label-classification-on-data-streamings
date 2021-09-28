@@ -2,14 +2,16 @@ import numpy as np
 import random
 
 
-def predict(example):
-    instances, labels = example[0]["estimator"]["predict"]("").shape
-    preds = [np.array(exp["estimator"]["predict"]("")) * exp["weight"]
-             for exp in example]
+def metodo_suma_pesos_legacy(example, labels):
+    return [sum(exp["weight"][label] for exp in example)
+            for label in range(labels)]
 
-    sum_weights = [sum(exp["weight"][label] for exp in example)
-                   for label in range(labels)]
 
+def metodo_suma_pesos_nuevo(example):
+    return np.sum([exp["weight"] for exp in example], axis=0)
+
+
+def metodo_prediccion_legacy(preds, sum_weights, instances, labels):
     aggregate = np.array([[
         np.sum(
             [np.array(p[i][label]) for p in preds] / sum_weights[label],
@@ -17,12 +19,27 @@ def predict(example):
         ) for label in range(labels)
     ] for i in range(instances)])
 
-    out = (np.array(aggregate) + 0.5).astype(int)
+    return (np.array(aggregate) + 0.5).astype(int)
 
-    sum_weights2 = np.sum([exp["weight"] for exp in example], axis=0)
+
+def metodo_prediccion_nuevo(preds, sum_weights):
+    return (np.sum(preds, axis=0) / sum_weights >= .5).astype(int)
+
+
+def predict(example):
+    instances, labels = example[0]["estimator"]["predict"]("").shape
+    preds = [np.array(exp["estimator"]["predict"]("")) * exp["weight"]
+             for exp in example]
+
+    sum_weights = metodo_suma_pesos_legacy(example, labels)
+    sum_weights2 = metodo_suma_pesos_nuevo(example)
     if not np.array_equal(sum_weights, sum_weights2):
-        print("No son iguales!!")
-    pf = (np.sum(preds, axis=0) / sum_weights >= .5).astype(int)
+        print("Métodos de suma de pesos NO son iguales!!")
+
+    out = metodo_prediccion_legacy(preds, sum_weights, instances, labels)
+    out2 = metodo_prediccion_nuevo(preds, sum_weights2)
+    if not np.array_equal(out, out2):
+        print("Métodos de calculo de predicción NO son iguales!!")
 
     # print("estimadores: ", len(example))
     # print("instancias: ", instances)
@@ -32,15 +49,14 @@ def predict(example):
     # print("predicciones: ", [e["estimator"]["predict"]("") for e in example])
 
     # print("predicciones ponderadas: ", preds)
-    # print("suma de pesos: ", sum_weights)
+    # print("suma de pesos por etiqueta: ", sum_weights)
     # print("aggregate: ", aggregate)
 
     # print("prediccion final: ", out)
-    # print("predicción final 2:", pf)
-    # print("iguales: ", np.array_equal(out, pf))
+    # print("predicción final 2:", out2)
     # print("*" * 100)
 
-    return pf, out
+    return out2, out
 
 
 example_simplest = [{
@@ -181,7 +197,7 @@ examples = [
 
 [predict(example) for example in examples]
 
-for i in range(10000):
+for i in range(1000):
     er = example_random()
     a, b = predict(er)
     if not np.array_equal(a, b):
