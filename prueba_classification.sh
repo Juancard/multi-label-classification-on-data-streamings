@@ -1,16 +1,16 @@
 #!/bin/bash
 
-juego=prueba_nuevo_calculo_pred_en_dwmcml
+juego=nuevo_calculo_pred_en_dwmcml
 DIR=/tmp/$juego
 
 DATASET1=enron
 DATASET2=20ng
 DATASET3=mediamill
 
-datasets=($DATASET2)
+datasets=($DATASET1)
 #datasets2=(tmc2007 scene yeast)
 #models=(lcht br_nb cc_nb)
-models=(dwmc_br)
+models=(dwmc_br dwmc_cc)
 
 for d in "${datasets[@]}"
 do 
