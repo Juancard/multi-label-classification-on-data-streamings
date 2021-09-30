@@ -9,10 +9,9 @@ from functools import reduce
 from toolz import pipe, curry
 import pandas as pd
 from urllib.error import HTTPError
-from skmultilearn.dataset import load_dataset, available_data_sets
 from skmultiflow.data.data_stream import DataStream
 
-from sklearn.linear_model import Perceptron, SGDClassifier, LogisticRegression
+from sklearn.linear_model import Perceptron, SGDClassifier
 from skmultiflow.meta.multi_output_learner import MultiOutputLearner
 from skmultiflow.meta import ClassifierChain,\
     AccuracyWeightedEnsemble, \
@@ -27,8 +26,12 @@ from skmultiflow.trees import LabelCombinationHoeffdingTreeClassifier,\
     iSOUPTreeRegressor, \
     HoeffdingTreeClassifier
 
-from common.helpers import (load_custom_dataset, load_moa_stream,
-                            evaluar, repeatInstances)
+from common.helpers import (
+    evaluar, repeatInstances
+)
+from common.my_datasets import (
+    load_given_dataset, load_moa_stream, available_datasets,
+)
 from common.evaluation_metrics import evaluation_metrics
 
 
@@ -90,7 +93,13 @@ SUPPORTED_MODELS = {
     },
     "pcc": {
         "name": "Probabilistic Sampling Classifier Chains",
-        "model": lambda _: ProbabilisticClassifierChain(SGDClassifier(max_iter=100, loss='log', random_state=1)),
+        "model": lambda _: ProbabilisticClassifierChain(
+            SGDClassifier(
+                max_iter=100,
+                loss='log',
+                random_state=1
+            )
+        ),
         "ensemble": False
     },
     "lcht": {
@@ -353,32 +362,22 @@ def filename_path(name, dataset_name, output_dir, ext="csv"):
     return os.path.join(output_dir, filename)
 
 
-def load_given_dataset(dataset):
-    if dataset.lower() == "20ng":
-        return load_custom_dataset("20ng")
-    if dataset.lower() == "test":
-        return load_custom_dataset("test")
-    return load_dataset(dataset, 'undivided')
-
-
 def valid_args(args):
     """ Validate arguments passed to this script. """
-    available_datasets = set()
     try:
-        available_datasets = {x[0].lower()
-                              for x in available_data_sets().keys()}
+        all_datasets_available = available_datasets()
     except HTTPError:
         logging.warning(
-            "Conection error: skmultilearn datasets are unavailable. Only local datasets will be available.")
-    available_datasets.add("test")
-    available_datasets.add("20ng")
+            "Conection error: skmultilearn datasets are unavailable." +
+            " Only local datasets will be available."
+        )
     valid_dataset = True
     for i in args.datasets:
-        if i.lower() not in available_datasets:
+        if i.lower() not in all_datasets_available:
             logging.error("Dataset '%s' does not exists", i)
             valid_dataset = False
     if not valid_dataset:
-        logging.info("Valid datasets are: %s", str(available_datasets))
+        logging.info("Valid datasets are: %s", str(all_datasets_available))
         return False
 
     if args.copies == []:

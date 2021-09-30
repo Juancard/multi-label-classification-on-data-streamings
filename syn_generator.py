@@ -8,12 +8,20 @@ import logging
 import numpy as np
 from toolz import pipe, curry
 from sklearn.metrics import mean_absolute_error
-from skmultilearn.dataset import load_dataset
 from skmultiflow.data.data_stream import DataStream
-from common.helpers import (load_custom_dataset, load_moa_stream, generate_labels_relationship,
-                            labels_relationship_graph, generate_labels_skew, labels_skew_graph,
-                            generate_labels_distribution, labels_distribution_graph,
-                            labels_distribution_mae_graph)
+from common.helpers import (
+    generate_labels_relationship,
+    labels_relationship_graph,
+    generate_labels_skew,
+    labels_skew_graph,
+    generate_labels_distribution,
+    labels_distribution_graph,
+    labels_distribution_mae_graph
+)
+from common.my_datasets import (
+    load_given_dataset,
+    load_moa_stream,
+)
 
 PLOT_COLORS = ["red", "blue", "green", "orange",
                "violet", "yellow", "brown", "gray"]
@@ -67,25 +75,31 @@ def save_labels_relationship(
         conditional_matrix
 ):
 
-    with open(filename_path("conditional", dataset_name, output_dir), 'w') as f:
+    with open(filename_path(
+        "conditional",
+        dataset_name,
+        output_dir
+    ), 'w') as f:
         writer = csv.writer(f)
         for row in conditional_matrix:
             writer.writerow(row)
 
-    with open(filename_path("priors", dataset_name, output_dir), 'w') as f:
+    with open(filename_path(
+        "priors",
+        dataset_name,
+        output_dir
+    ), 'w') as f:
         writer = csv.writer(f)
         writer.writerow(priors)
 
-    with open(filename_path("coocurrences", dataset_name, output_dir), 'w') as f:
+    with open(filename_path(
+        "coocurrences",
+        dataset_name,
+        output_dir
+    ), 'w') as f:
         writer = csv.writer(f)
         for row in coocurrences:
             writer.writerow(row)
-
-
-def load_given_dataset(d):
-    if d.lower() == "20ng":
-        return load_custom_dataset(d.lower())
-    return load_dataset(d, 'undivided')
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -124,7 +138,7 @@ def main():
         print("Dataset not provided. Exiting.")
         sys.exit(0)
 
-    #### DATASET ANALYSIS ######
+    # DATASET ANALYSIS
 
     logging.info("Analyzing dataset %s", args.dataset)
     logging.info("Loading dataset: %s", args.dataset)
@@ -214,15 +228,17 @@ def main():
     # Limpia memoria
     del x_stream, y_stream, data_stream
 
-    #### FIN DATASET ANALYSIS ######
+    # FIN DATASET ANALYSIS
 
-    #### STREAM ANALYSIS ######
+    # STREAM ANALYSIS
 
     if args.streams:
         stream_names = args.streamsnames or []
         if len(stream_names) != len(args.streams):
             logging.error(
-                "La cantidad de streams y la cantidad de nombres de streams no coinciden.")
+                "La cantidad de streams y" +
+                " la cantidad de nombres de streams no coinciden."
+            )
             sys.exit(1)
         metadata["syn_streams"] = []
         for idx, i in enumerate(args.streams):
@@ -328,7 +344,7 @@ def main():
                 "labels_distribution_mean_absolute_error": mae
             })
 
-    #### FIN STREAM ANALYSIS ######
+    # FIN STREAM ANALYSIS
 
     logging.info("Plotting Label Skew")
     labels_skew_graph(

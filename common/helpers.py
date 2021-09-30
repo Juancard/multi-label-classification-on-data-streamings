@@ -1,5 +1,4 @@
 import time
-import os
 import math
 import numpy as np
 import pandas as pd
@@ -8,9 +7,7 @@ from scipy import sparse
 from scipy.stats import norm
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
-import uuid
 
-from skmultilearn.dataset import load_from_arff
 from sklearn.datasets import make_multilabel_classification
 
 from skmultiflow.utils import check_random_state
@@ -18,58 +15,6 @@ from skmultiflow.evaluation.evaluate_prequential import EvaluatePrequential
 from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from skmultiflow.utils import calculate_object_size
-from sklearn.linear_model import SGDClassifier
-
-
-def load_custom_dataset(dataset_name, path=None):
-    if dataset_name == "20ng":
-        arff_path = path if path else "./datasets/20NG-F.arff"
-        n_labels = 20
-        label_location = "start"
-        arff_file_is_sparse = False
-        x_mulan, y_mulan, feature_names, label_names = load_from_arff(
-            arff_path,
-            n_labels,
-            label_location=label_location,
-            load_sparse=arff_file_is_sparse,
-            return_attribute_definitions=True
-        )
-        return x_mulan, y_mulan, feature_names, label_names
-    if dataset_name == "test":
-        arff_path = path if path else "./datasets/test.arff"
-        n_labels = 5
-        label_location = "end"
-        arff_file_is_sparse = False
-        x, y, feature_names, label_names = load_from_arff(
-            arff_path,
-            n_labels,
-            label_location=label_location,
-            load_sparse=arff_file_is_sparse,
-            return_attribute_definitions=True
-        )
-        return x, y, feature_names, label_names
-
-
-def load_moa_stream(filepath, labels):
-    print("Reading original arff from path")
-    with open(filepath) as arff_file:
-        arff_file_content = [line.rstrip(",\n") + "\n" for line in arff_file]
-    filename = "stream_{}".format(str(uuid.uuid1()))
-    tmp_file = "/tmp/{}".format(filename)
-    with open(tmp_file, "w") as opened:
-        opened.write("".join(arff_file_content))
-    del arff_file_content
-    print("Reading original arff from tmp")
-    arff_path = tmp_file
-    label_location = "start"
-    arff_file_is_sparse = False
-    return load_from_arff(
-        arff_path,
-        labels,
-        label_location=label_location,
-        load_sparse=arff_file_is_sparse,
-        return_attribute_definitions=True
-    )
 
 
 class MultilabelGenerator2(MultilabelGenerator):
@@ -464,8 +409,8 @@ def features_graph(data, title="", colors=["g", "r", "b"], output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
     axis.set_title(title)
-    #axis.set_xlabel('Top Combinations')
-    #axis.set_ylabel('Frequency (Scaled)')
+    # axis.set_xlabel('Top Combinations')
+    # axis.set_ylabel('Frequency (Scaled)')
     for idx, i in enumerate(data):
         axis = sns.distplot(
             data[i],
