@@ -1,7 +1,21 @@
 import uuid
 from skmultilearn.dataset import (
-    load_from_arff, load_dataset, available_data_sets
+    load_from_arff,
+    load_dataset,
+    available_data_sets,
 )
+
+
+def load_from_arff_wrapper(
+    arff_path, n_labels, label_location, file_is_sparse=False
+):
+    return load_from_arff(
+        arff_path,
+        n_labels,
+        label_location=label_location,
+        load_sparse=file_is_sparse,
+        return_attribute_definitions=True,
+    )
 
 
 def load_custom_dataset(dataset_name, path=None):
@@ -9,28 +23,12 @@ def load_custom_dataset(dataset_name, path=None):
         arff_path = path if path else "./datasets/20NG-F.arff"
         n_labels = 20
         label_location = "start"
-        arff_file_is_sparse = False
-        x_mulan, y_mulan, feature_names, label_names = load_from_arff(
-            arff_path,
-            n_labels,
-            label_location=label_location,
-            load_sparse=arff_file_is_sparse,
-            return_attribute_definitions=True
-        )
-        return x_mulan, y_mulan, feature_names, label_names
+        return load_from_arff_wrapper(arff_path, n_labels, label_location)
     if dataset_name == "test":
         arff_path = path if path else "./datasets/test.arff"
         n_labels = 5
         label_location = "end"
-        arff_file_is_sparse = False
-        x, y, feature_names, label_names = load_from_arff(
-            arff_path,
-            n_labels,
-            label_location=label_location,
-            load_sparse=arff_file_is_sparse,
-            return_attribute_definitions=True
-        )
-        return x, y, feature_names, label_names
+        return load_from_arff_wrapper(arff_path, n_labels, label_location)
 
 
 def load_moa_stream(filepath, labels):
@@ -51,7 +49,7 @@ def load_moa_stream(filepath, labels):
         labels,
         label_location=label_location,
         load_sparse=arff_file_is_sparse,
-        return_attribute_definitions=True
+        return_attribute_definitions=True,
     )
 
 
@@ -62,12 +60,11 @@ def local_datasets():
 def load_given_dataset(dataset):
     if dataset.lower() in local_datasets():
         return load_custom_dataset(dataset.lower())
-    return load_dataset(dataset, 'undivided')
+    return load_dataset(dataset, "undivided")
 
 
 def available_datasets():
-    available_datasets = {x[0].lower()
-                          for x in available_data_sets().keys()}
+    available_datasets = {x[0].lower() for x in available_data_sets().keys()}
     for i in local_datasets():
         available_datasets.add(i)
     return available_datasets

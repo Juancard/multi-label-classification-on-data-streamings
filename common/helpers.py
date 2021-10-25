@@ -77,7 +77,6 @@ def evaluar(
     stream, model, pretrain_size=0.1, window_size=20, ensemble=False,
     logging=None, train_logs_max=5, catch_errors=False
 ):
-    stream.restart()
     stats = {
         "stream_name": stream.name,
         "instances": stream.n_remaining_samples(),
@@ -433,17 +432,3 @@ def features_graph(data, title="", colors=["g", "r", "b"], output=False):
     plt.clf()
 
 
-def repeatInstances(X, y, copies=2, batches=1):
-    x_repeat = np.vstack(
-        np.array([
-            np.tile(i, (copies, 1))
-            for i in np.array_split(X, batches)
-        ])
-    )
-    y_repeat = np.vstack(
-        np.array([
-            np.tile(i, (copies, 1))
-            for i in np.array_split(y, batches)
-        ])
-    )
-    return x_repeat, y_repeat
