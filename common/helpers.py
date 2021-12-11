@@ -232,8 +232,8 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
     axis.set_title(title)
-    axis.set_xlabel('Labels Combinations')
-    axis.set_ylabel('Frequency (Scaled)')
+    axis.set_xlabel('Combinaciones de Etiquetas')
+    axis.set_ylabel('Frecuencia (escalada)')
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -256,8 +256,8 @@ def labels_skew_graph(data, title="", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
     axis.set_title(title)
-    axis.set_xlabel('Top Combinations')
-    axis.set_ylabel('Frequency (Scaled)')
+    axis.set_xlabel('Principales Combinaciones')
+    axis.set_ylabel('Frecuencia (escalada)')
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -280,8 +280,8 @@ def labels_distribution_mae_graph(data, title="", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
     axis.set_title(title)
-    axis.set_xlabel('Labels Combinations')
-    axis.set_ylabel('Distance from Original Dataset')
+    axis.set_xlabel('Combinaciones de Etiquetas')
+    axis.set_ylabel('Distancia con respecto a dataset original')
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)

@@ -165,6 +165,7 @@ def main():
     )
     labels_relationship_graph(
         plot_props={"data": conditional_matrix},
+        title="Relación entre Etiquetas\n{}".format(metadata["dataset"]["name"].capitalize()),
         output=os.path.join(
             output_dir,
             filename_path(
@@ -327,6 +328,7 @@ def main():
             )
             labels_relationship_graph(
                 plot_props={"data": conditional_matrix},
+                title="Relación entre Etiquetas\n{}".format(stream_name),
                 output=os.path.join(
                     output_dir,
                     filename_path(
@@ -355,22 +357,22 @@ def main():
     logging.info("Plotting Label Skew")
     labels_skew_graph(
         lk_plot_data,
-        title="Label Skew\n{}".format(metadata["dataset"]["name"].title()),
+        title="Sesgo de Etiquetas\n{}".format(metadata["dataset"]["name"].capitalize()),
         output=os.path.join(output_dir, "label_skew.png"),
     )
 
     logging.info("Plotting Label Distribution")
     labels_distribution_graph(
         ld_plot_data,
-        title="Label Distribution\n{}".format(
-            metadata["dataset"]["name"].title()
+        title="Distribución de Etiquetas\n{}".format(
+            metadata["dataset"]["name"].capitalize()
         ),
         output=os.path.join(output_dir, "label_distribution.png"),
     )
     labels_distribution_mae_graph(
         ld_mae_plot_data,
-        title="Label Distribution - Mean Absolute Error\n{}".format(
-            metadata["dataset"]["name"].title()
+        title="Distribución de Etiquetas - Mean Absolute Error\n{}".format(
+            metadata["dataset"]["name"].capitalize()
         ),
         output=os.path.join(output_dir, "ld_mae.png"),
     )
