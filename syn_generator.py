@@ -197,7 +197,7 @@ def main():
     )
     lk_top_labels_combination["Original"] = top_labels_combinations(
         label_names, labels_skew_original
-    )
+    )[:SKEW_TOP_COMBINATIONS]
 
     logging.info("Analyzing label distribution")
     (
@@ -274,7 +274,7 @@ def main():
             )
             lk_top_labels_combination[stream_name] = top_labels_combinations(
                 label_names, labels_skew_syn
-            )
+            )[:SKEW_TOP_COMBINATIONS]
 
             logging.info("Analyzing label distribution")
             (
