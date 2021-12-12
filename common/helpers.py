@@ -211,7 +211,6 @@ def generate_labels_skew(y_array, print_top=False):
         (labels_set_count.max()-labels_set_count.min())
     return labels_set_count_scaled
 
-
 def generate_labels_distribution(y_array, print_top=False):
     dataframe = pd.DataFrame(
         y_array,
@@ -245,7 +244,7 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
         )
     plt.legend(handles=handles)
     if output:
-        fig.savefig(output)
+        fig.savefig(output, bbox_inches="tight")
     else:
         plt.show()
     plt.cla()
@@ -269,7 +268,7 @@ def labels_skew_graph(data, title="", output=False):
         )
     plt.legend(handles=handles)
     if output:
-        fig.savefig(output)
+        fig.savefig(output, bbox_inches="tight")
     else:
         plt.show()
     plt.cla()
@@ -293,7 +292,7 @@ def labels_distribution_mae_graph(data, title="", output=False):
         )
     plt.legend(handles=handles)
     if output:
-        fig.savefig(output)
+        fig.savefig(output, bbox_inches="tight")
     else:
         plt.show()
 
@@ -329,7 +328,7 @@ def generate_labels_relationship(y_array, cardinalidad=False,
 def labels_relationship_graph(plot_props, title="", output=False):
     fig = plt.figure(figsize=(24, 16))
     axis = fig.gca()
-    axis.set_title(title)
+    axis.set_title(title, fontsize=50)
     sns.heatmap(
         linewidths=0,
         cmap=sns.color_palette("Greys_r", n_colors=100),
@@ -337,7 +336,7 @@ def labels_relationship_graph(plot_props, title="", output=False):
         **plot_props
     )
     if output:
-        fig.savefig(output)
+        fig.savefig(output, bbox_inches="tight")
     else:
         plt.show()
     plt.cla()
@@ -425,7 +424,7 @@ def features_graph(data, title="", colors=["g", "r", "b"], output=False):
     axis = (axis.set(xlim=(0, 2), ylim=(0, 2.5)))
     plt.legend()
     if output:
-        fig.savefig(output)
+        fig.savefig(output, bbox_inches="tight")
     else:
         plt.show()
     plt.cla()
