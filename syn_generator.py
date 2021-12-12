@@ -6,6 +6,7 @@ import csv
 import json
 import logging
 import numpy as np
+import pandas as pd
 from toolz import pipe, curry
 from sklearn.metrics import mean_absolute_error
 from skmultiflow.data.data_stream import DataStream
@@ -14,6 +15,7 @@ from common.helpers import (
     labels_relationship_graph,
     generate_labels_skew,
     labels_skew_graph,
+    top_labels_combinations,
     generate_labels_distribution,
     labels_distribution_graph,
     labels_distribution_mae_graph,
@@ -127,6 +129,8 @@ def main():
     ld_plot_data = []
     ld_mae_plot_data = []
 
+    lk_top_labels_combination = {}
+
     if not args.dataset:
         print("Dataset not provided. Exiting.")
         sys.exit(0)
@@ -165,7 +169,9 @@ def main():
     )
     labels_relationship_graph(
         plot_props={"data": conditional_matrix},
-        title="Relación entre Etiquetas\n{}".format(metadata["dataset"]["name"].capitalize()),
+        title="Relación entre Etiquetas\n{}".format(
+            metadata["dataset"]["name"].capitalize()
+        ),
         output=os.path.join(
             output_dir,
             filename_path(
@@ -188,6 +194,9 @@ def main():
             "join": True,
             "label": "Original",
         }
+    )
+    lk_top_labels_combination["Original"] = top_labels_combinations(
+        label_names, labels_skew_original
     )
 
     logging.info("Analyzing label distribution")
@@ -262,6 +271,9 @@ def main():
                     "join": True,
                     "label": stream_name,
                 }
+            )
+            lk_top_labels_combination[stream_name] = top_labels_combinations(
+                label_names, labels_skew_syn
             )
 
             logging.info("Analyzing label distribution")
@@ -357,8 +369,13 @@ def main():
     logging.info("Plotting Label Skew")
     labels_skew_graph(
         lk_plot_data,
-        title="Sesgo de Etiquetas\n{}".format(metadata["dataset"]["name"].capitalize()),
+        title="Sesgo de Etiquetas\n{}".format(
+            metadata["dataset"]["name"].capitalize()
+        ),
         output=os.path.join(output_dir, "label_skew.png"),
+    )
+    pd.DataFrame.from_dict(lk_top_labels_combination).to_csv(
+        os.path.join(output_dir, "label_skew_top_labels_combinations.csv")
     )
 
     logging.info("Plotting Label Distribution")

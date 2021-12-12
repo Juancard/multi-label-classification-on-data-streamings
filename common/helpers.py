@@ -211,6 +211,17 @@ def generate_labels_skew(y_array, print_top=False):
         (labels_set_count.max()-labels_set_count.min())
     return labels_set_count_scaled
 
+def top_labels_combinations(labels_names, labels_skew):
+  def active_label_names(x):
+    return list(map(
+      lambda idx: labels_names[idx][0],
+      np.where(np.array(x) == 1)[0]
+    ))
+  return list(
+      labels_skew.index.map(active_label_names)
+  )
+
+
 def generate_labels_distribution(y_array, print_top=False):
     dataframe = pd.DataFrame(
         y_array,
