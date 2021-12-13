@@ -376,7 +376,7 @@ def main():
                 np.array([i[0] for i in features_names]),
             )
             pd.DataFrame(
-                zip(tf[0], tf[1]), columns=["atributo", "frecuencia"]
+                zip(tf[0], tf[1]), columns=["atributo", "peso"]
             ).to_csv(
                 os.path.join(output_dir, stream_name + "_features_space.csv")
             )
