@@ -238,7 +238,7 @@ def main():
         np.array([i[0] for i in label_names]),
         np.array([i[0] for i in features_names]),
     )
-    pd.DataFrame(zip(tf[0], tf[1]), columns=["atributo", "frecuencia"]).to_csv(
+    pd.DataFrame(zip(tf[0], tf[1]), columns=["atributo", "peso"]).to_csv(
         os.path.join(output_dir, args.dataset + "_features_space.csv")
     )
 
