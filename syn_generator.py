@@ -19,6 +19,7 @@ from common.helpers import (
     generate_labels_distribution,
     labels_distribution_graph,
     labels_distribution_mae_graph,
+    top_features,
 )
 from common.my_datasets import (
     load_given_dataset,
@@ -139,7 +140,9 @@ def main():
 
     logging.info("Analyzing dataset %s", args.dataset)
     logging.info("Loading dataset: %s", args.dataset)
-    x_stream, y_stream, _, label_names = load_given_dataset(args.dataset)
+    x_stream, y_stream, features_names, label_names = load_given_dataset(
+        args.dataset
+    )
     data_stream = DataStream(
         data=x_stream.todense(), y=y_stream.todense(), name=args.dataset
     )
@@ -227,6 +230,14 @@ def main():
         }
     )
 
+    logging.info("Analyzing label space")
+    tf = top_features(
+        x_stream.toarray(), y_stream.toarray(), label_names, features_names
+    )
+    pd.DataFrame(zip(tf[0], tf[1]), columns=["atributo", "frecuencia"]).to_csv(
+        os.path.join(output_dir, args.dataset + "_features_space.csv")
+    )
+
     # Limpia memoria
     del x_stream, y_stream, data_stream
 
@@ -250,7 +261,7 @@ def main():
             logging.info("Analyzing syn stream: %s", stream_name)
 
             logging.info("Loading syn stream to memory")
-            _, y_syn, _, _ = load_moa_stream(stream_path, args.labels)
+            x_syn, y_syn, _, _ = load_moa_stream(stream_path, args.labels)
 
             labels = y_syn.shape[1]
             cardinality = (
@@ -350,6 +361,16 @@ def main():
                         ext="png",
                     ),
                 ),
+            )
+
+            logging.info("Analyzing label space")
+            tf = top_features(
+                x_syn.toarray(), y_syn.toarray(), label_names, features_names
+            )
+            pd.DataFrame(
+                zip(tf[0], tf[1]), columns=["atributo", "frecuencia"]
+            ).to_csv(
+                os.path.join(output_dir, stream_name + "_features_space.csv")
             )
 
             metadata["syn_streams"].append(
