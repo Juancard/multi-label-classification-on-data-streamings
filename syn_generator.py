@@ -169,9 +169,10 @@ def main():
     )
     labels_relationship_graph(
         plot_props={"data": conditional_matrix},
-        title="Relación entre Etiquetas\n{}".format(
-            metadata["dataset"]["name"].capitalize()
-        ),
+        title="",
+        #title="Relación entre Etiquetas\n{}".format(
+        #    metadata["dataset"]["name"].capitalize()
+        #),
         output=os.path.join(
             output_dir,
             filename_path(
@@ -340,7 +341,8 @@ def main():
             )
             labels_relationship_graph(
                 plot_props={"data": conditional_matrix},
-                title="Relación entre Etiquetas\n{}".format(stream_name),
+                title="",
+                #title="Relación entre Etiquetas\n{}".format(stream_name),
                 output=os.path.join(
                     output_dir,
                     filename_path(
