@@ -16,9 +16,9 @@ from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from skmultiflow.utils import calculate_object_size
 
-GRAPH_TITLE_FONTSIZE = 40
+GRAPH_TITLE_FONTSIZE = 18
 GRAPH_AXIS_LABEL_FONTSIZE = 18
-GRAPH_LEGEND_FONTSIZE = 10
+GRAPH_LEGEND_FONTSIZE = 12
 
 class MultilabelGenerator2(MultilabelGenerator):
     # IGUAL QUE LA FUNCION ORIGINAL PERO NO PERMITE INSTANCIAS SIN ETIQUETAS
