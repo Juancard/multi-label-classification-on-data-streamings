@@ -16,6 +16,9 @@ from skmultiflow.data import ConceptDriftStream
 from skmultiflow.data import MultilabelGenerator
 from skmultiflow.utils import calculate_object_size
 
+GRAPH_TITLE_FONTSIZE = 40
+GRAPH_AXIS_LABEL_FONTSIZE = 18
+GRAPH_LEGEND_FONTSIZE = 10
 
 class MultilabelGenerator2(MultilabelGenerator):
     # IGUAL QUE LA FUNCION ORIGINAL PERO NO PERMITE INSTANCIAS SIN ETIQUETAS
@@ -28,15 +31,19 @@ class MultilabelGenerator2(MultilabelGenerator):
             n_classes=self.n_targets,
             n_labels=self.n_labels,
             allow_unlabeled=False,  # SE AGREGA ESTA LINEA
-            random_state=self._random_state
+            random_state=self._random_state,
         )
         self.target_names = ["target_" + str(i) for i in range(self.n_targets)]
-        self.feature_names = ["att_num_" +
-                              str(i) for i in range(self.n_num_features)]
-        self.target_values = np.unique(
-            self.y
-        ).tolist() if self.n_targets == 1 else \
-            [np.unique(self.y[:, i]).tolist() for i in range(self.n_targets)]
+        self.feature_names = [
+            "att_num_" + str(i) for i in range(self.n_num_features)
+        ]
+        self.target_values = (
+            np.unique(self.y).tolist()
+            if self.n_targets == 1
+            else [
+                np.unique(self.y[:, i]).tolist() for i in range(self.n_targets)
+            ]
+        )
 
     # por alguna razón la clase MultilabelGenerator no implementa el método
     # has_more_samples
@@ -61,8 +68,11 @@ class ConceptDriftStream2(ConceptDriftStream):
         self.current_sample_y = np.zeros((batch_size, self.n_targets))
         for j in range(batch_size):
             self.sample_idx += 1
-            x = -4.0 * float(self.sample_idx - self.position) / \
-                float(self.width)
+            x = (
+                -4.0
+                * float(self.sample_idx - self.position)
+                / float(self.width)
+            )
             probability_drift = 1.0 / (1.0 + np.exp(x))
             if self._random_state.rand() > probability_drift:
                 X, y = self.stream.next_sample()
@@ -74,8 +84,14 @@ class ConceptDriftStream2(ConceptDriftStream):
 
 
 def evaluar(
-    stream, model, pretrain_size=0.1, window_size=20, ensemble=False,
-    logging=None, train_logs_max=5, catch_errors=False
+    stream,
+    model,
+    pretrain_size=0.1,
+    window_size=20,
+    ensemble=False,
+    logging=None,
+    train_logs_max=5,
+    catch_errors=False,
 ):
     stats = {
         "stream_name": stream.name,
@@ -84,7 +100,7 @@ def evaluar(
         "ensemble": ensemble(model, stream) if ensemble else ensemble,
         "pretrain_size_prop": pretrain_size,
         "pretrain_size": round(stream.n_remaining_samples() * pretrain_size),
-        "window_size": window_size
+        "window_size": window_size,
     }
     stats["train_size"] = stream.n_remaining_samples() - stats["pretrain_size"]
     stats["batch_size"] = math.ceil(stats["train_size"] / window_size)
@@ -113,12 +129,16 @@ def evaluar(
                     model_pretrained = ensemble(model, stream)
                 else:
                     model_pretrained = ensemble(model, stream)
-            elif type(ensemble(model, stream)).__name__ == 'OzaBaggingMLClassifier':
+            elif (
+                type(ensemble(model, stream)).__name__
+                == "OzaBaggingMLClassifier"
+            ):
                 model_pretrained = ensemble(model, stream)
                 if do_pretraining:
                     logging.info("Pre-training oza...")
                     model_pretrained.partial_fit(
-                        X, y, classes=stream.target_values[0])
+                        X, y, classes=stream.target_values[0]
+                    )
             else:
                 if do_pretraining:
                     logging.info("Pre-training model in ensemble...")
@@ -145,7 +165,7 @@ def evaluar(
                 logging.info(
                     "%s / %s trained samples.",
                     (iterations + 1) * stats["batch_size"],
-                    stats["train_size"]
+                    stats["train_size"],
                 )
             iterations += 1
         end_time = time.time()
@@ -176,12 +196,14 @@ def evaluar(
     return stats, true_labels, predictions
 
 
-def evaluate_prequential(stream, model, pretrain_size=0.1,
-                         window_size=20, plot=False, output=None):
+def evaluate_prequential(
+    stream, model, pretrain_size=0.1, window_size=20, plot=False, output=None
+):
     stream.restart()
     pretrain_samples = round(stream.n_remaining_samples() * pretrain_size)
-    batch_size = round((stream.n_remaining_samples() -
-                        pretrain_samples) / window_size)
+    batch_size = round(
+        (stream.n_remaining_samples() - pretrain_samples) / window_size
+    )
     print("Pretrain size (examples):", pretrain_samples)
     print("Batch size (examples):", batch_size)
     evaluator = EvaluatePrequential(
@@ -189,71 +211,84 @@ def evaluate_prequential(stream, model, pretrain_size=0.1,
         pretrain_size=pretrain_samples,
         batch_size=batch_size,
         max_samples=1000000,
-        metrics=["exact_match", "hamming_score", "hamming_loss",
-                 "j_index", "running_time", "model_size"],
-        output_file=output
+        metrics=[
+            "exact_match",
+            "hamming_score",
+            "hamming_loss",
+            "j_index",
+            "running_time",
+            "model_size",
+        ],
+        output_file=output,
     )
     evaluator.evaluate(stream=stream, model=model)
 
 
 def generate_labels_skew(y_array, print_top=False):
-    dataframe = pd.DataFrame(
-        y_array,
-        columns=list(range(0, y_array.shape[1]))
+    dataframe = pd.DataFrame(y_array, columns=list(range(0, y_array.shape[1])))
+    labels_set_count = (
+        dataframe.groupby(dataframe.columns.tolist(), as_index=True)
+        .size()
+        .sort_values(ascending=False)
     )
-    labels_set_count = dataframe.groupby(
-        dataframe.columns.tolist(), as_index=True
-    ).size().sort_values(ascending=False)
     if print_top:
-        print("Top ", print_top, ": \n",
-              labels_set_count[:print_top], "\n")
-    labels_set_count_scaled = (labels_set_count-labels_set_count.min()) / \
-        (labels_set_count.max()-labels_set_count.min())
+        print("Top ", print_top, ": \n", labels_set_count[:print_top], "\n")
+    labels_set_count_scaled = (labels_set_count - labels_set_count.min()) / (
+        labels_set_count.max() - labels_set_count.min()
+    )
     return labels_set_count_scaled
 
+
 def top_labels_combinations(labels_names, labels_skew):
-  def active_label_names(x):
-    return list(map(
-      lambda idx: labels_names[idx][0],
-      np.where(np.array(x) == 1)[0]
-    ))
-  return list(
-      labels_skew.index.map(active_label_names)
-  )
+    def active_label_names(x):
+        return list(
+            map(
+                lambda idx: labels_names[idx][0], np.where(np.array(x) == 1)[0]
+            )
+        )
+
+    return list(labels_skew.index.map(active_label_names))
 
 
 def generate_labels_distribution(y_array, print_top=False):
-    dataframe = pd.DataFrame(
-        y_array,
-        columns=list(range(0, y_array.shape[1]))
-    )
+    dataframe = pd.DataFrame(y_array, columns=list(range(0, y_array.shape[1])))
     df_count = dataframe.sum(axis=1).value_counts()
     labels_distribution = df_count.reindex(
-        np.arange(df_count.index.min(), df_count.index.max() + 1)).fillna(0)
+        np.arange(df_count.index.min(), df_count.index.max() + 1)
+    ).fillna(0)
     if print_top:
-        print("Número de etiquetas por instancia vs frecuencia - ",
-              print_top, "\n", labels_distribution[:print_top], "\n")
-    labels_distribution_scaled = (labels_distribution-0)/(
-        labels_distribution.max()-0)
+        print(
+            "Número de etiquetas por instancia vs frecuencia - ",
+            print_top,
+            "\n",
+            labels_distribution[:print_top],
+            "\n",
+        )
+    labels_distribution_scaled = (labels_distribution - 0) / (
+        labels_distribution.max() - 0
+    )
     return labels_distribution, labels_distribution_scaled
 
 
 def labels_distribution_graph(data, title="Label Distribution", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
-    axis.set_title(title)
-    axis.set_xlabel('Combinaciones de Etiquetas')
-    axis.set_ylabel('Frecuencia (escalada)')
+    axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
+    axis.set_xlabel(
+        "Combinaciones de Etiquetas",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
+    axis.set_ylabel(
+        "Frecuencia (escalada)",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
         handles.append(
-            mpatches.Patch(
-                color=i.get("color"),
-                label=i.get("label")
-            )
+            mpatches.Patch(color=i.get("color"), label=i.get("label"))
         )
-    plt.legend(handles=handles)
+    plt.legend(handles=handles, prop={"size": GRAPH_LEGEND_FONTSIZE})
     if output:
         fig.savefig(output, bbox_inches="tight")
     else:
@@ -265,19 +300,22 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
 def labels_skew_graph(data, title="", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
-    axis.set_title(title)
-    axis.set_xlabel('Principales Combinaciones')
-    axis.set_ylabel('Frecuencia (escalada)')
+    axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
+    axis.set_xlabel(
+        "Principales Combinaciones",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
+    axis.set_ylabel(
+        "Frecuencia (escalada)",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
         handles.append(
-            mpatches.Patch(
-                color=i.get("color"),
-                label=i.get("label")
-            )
+            mpatches.Patch(color=i.get("color"), label=i.get("label"))
         )
-    plt.legend(handles=handles)
+    plt.legend(handles=handles, prop={"size": GRAPH_LEGEND_FONTSIZE})
     if output:
         fig.savefig(output, bbox_inches="tight")
     else:
@@ -289,19 +327,22 @@ def labels_skew_graph(data, title="", output=False):
 def labels_distribution_mae_graph(data, title="", output=False):
     fig = plt.figure(figsize=(16, 8))
     axis = fig.gca()
-    axis.set_title(title)
-    axis.set_xlabel('Combinaciones de Etiquetas')
-    axis.set_ylabel('Distancia con respecto a dataset original')
+    axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
+    axis.set_xlabel(
+        "Combinaciones de Etiquetas",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
+    axis.set_ylabel(
+        "Distancia con respecto a dataset original",
+        fontsize=GRAPH_AXIS_LABEL_FONTSIZE
+    )
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
         handles.append(
-            mpatches.Patch(
-                color=i.get("color"),
-                label=i.get("label")
-            )
+            mpatches.Patch(color=i.get("color"), label=i.get("label"))
         )
-    plt.legend(handles=handles)
+    plt.legend(handles=handles, prop={"size": GRAPH_LEGEND_FONTSIZE})
     if output:
         fig.savefig(output, bbox_inches="tight")
     else:
@@ -311,8 +352,9 @@ def labels_distribution_mae_graph(data, title="", output=False):
     plt.clf()
 
 
-def generate_labels_relationship(y_array, cardinalidad=False,
-                                 print_coocurrence=False):
+def generate_labels_relationship(
+    y_array, cardinalidad=False, print_coocurrence=False
+):
     # Se calcula la probabilidad condicional P(A|B)
     # p(A|B) = P(A intersect B) / P(B)
     p_b = np.sum(y_array, axis=0)
@@ -331,7 +373,7 @@ def generate_labels_relationship(y_array, cardinalidad=False,
         p_a_intersection_b,
         p_b,
         out=np.zeros(p_a_intersection_b.shape, dtype=float),
-        where=p_b != 0
+        where=p_b != 0,
     ).T
     return p_b, coocurrence, conditional_probs
 
@@ -339,7 +381,7 @@ def generate_labels_relationship(y_array, cardinalidad=False,
 def labels_relationship_graph(plot_props, title="", output=False):
     fig = plt.figure(figsize=(24, 16))
     axis = fig.gca()
-    axis.set_title(title, fontsize=50)
+    axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
     sns.heatmap(
         linewidths=0,
         cmap=sns.color_palette("Greys_r", n_colors=100),
@@ -374,6 +416,7 @@ def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
         return top_features(
             X, y, labels_names, features_names, labels=labels, top=top
         )
+
     results = {}
     freqs = {}
     results["global"], freqs["global"] = tf_wrapper([])
@@ -381,11 +424,14 @@ def top_features_df(X, y, labels_names, features_names, labels=[], top=10):
         results[label], freqs[label] = tf_wrapper([label])
     labels_names_joined = ";".join(labels)
     results[labels_names_joined], freqs[labels_names_joined] = tf_wrapper(
-        labels)
+        labels
+    )
     return pd.DataFrame.from_dict(results), pd.DataFrame.from_dict(freqs)
 
 
-def freqs_per_feature(X, y, feature_name, labels_names, features_names, labels=[], top=10):
+def freqs_per_feature(
+    X, y, feature_name, labels_names, features_names, labels=[], top=10
+):
     feature_idx = np.where(features_names == feature_name)[0][0]
     idx_instances = np.array(range(0, X.shape[0]))
     for i in labels:
@@ -394,51 +440,31 @@ def freqs_per_feature(X, y, feature_name, labels_names, features_names, labels=[
         label_only = label_only.toarray() if sparse.issparse(y) else label_only
         found = np.where(label_only > 0)[0]
         idx_instances = np.intersect1d(idx_instances, found)
-    freqs_per_feature = X[idx_instances, feature_idx].toarray(
-    ) if sparse.issparse(X) else X[idx_instances, feature_idx]
+    freqs_per_feature = (
+        X[idx_instances, feature_idx].toarray()
+        if sparse.issparse(X)
+        else X[idx_instances, feature_idx]
+    )
     return np.array(freqs_per_feature.T)[0]
 
 
-def freqs_per_feature_dict(X, y, feature_name, labels_names, features_names, labels=[], top=10):
+def freqs_per_feature_dict(
+    X, y, feature_name, labels_names, features_names, labels=[], top=10
+):
     def fpf_wrapper(labels):
         return freqs_per_feature(
-            X, y, feature_name, labels_names, features_names, labels=labels, top=top
+            X,
+            y,
+            feature_name,
+            labels_names,
+            features_names,
+            labels=labels,
+            top=top,
         )
+
     results = {}
     for label in labels:
         results[label] = fpf_wrapper([label])
     labels_names_joined = ";".join(labels)
     results[labels_names_joined] = fpf_wrapper(labels)
     return results
-
-
-def features_graph(data, title="", colors=["g", "r", "b"], output=False):
-    sns.set_color_codes()
-    LABELS = list(data.keys())
-    fig = plt.figure(figsize=(16, 8))
-    axis = fig.gca()
-    axis.set_title(title)
-    # axis.set_xlabel('Top Combinations')
-    # axis.set_ylabel('Frequency (Scaled)')
-    for idx, i in enumerate(data):
-        axis = sns.distplot(
-            data[i],
-            fit=norm,
-            kde=False,
-            hist=False,
-            label=LABELS[idx],
-            fit_kws={
-                "color": colors[idx],
-                "label": LABELS[idx]
-            }
-        )
-    axis = (axis.set(xlim=(0, 2), ylim=(0, 2.5)))
-    plt.legend()
-    if output:
-        fig.savefig(output, bbox_inches="tight")
-    else:
-        plt.show()
-    plt.cla()
-    plt.clf()
-
-
