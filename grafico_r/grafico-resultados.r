@@ -11,9 +11,9 @@ library(grid)
 
 
 
-resultados_agranda_2021 <- read_csv("resultados-agranda-2021.csv")
-resultados_agranda_2021 <- read_csv("f1_example.csv")
-resultados_agranda_2021 <- read_csv("f1_micro.csv")
+#resultados_agranda_2021 <- read_csv("resultados-agranda-2021.csv")
+#resultados_agranda_2021 <- read_csv("f1_example.csv")
+#resultados_agranda_2021 <- read_csv("f1_micro.csv")
 resultados_agranda_2021 <- read_csv("f1_macro.csv")
 
 data = melt(resultados_agranda_2021, id.vars = c("stream"))
@@ -86,7 +86,7 @@ for (i in 1:length(names)) {
              color="black") +
     annotate(geom="text", x=1.5, xmin=1.5,xmax=2.5, y=0.5, hjust=0.1,label=paste("LC:", data[data$Stream == names[i] & data$Algoritmo=="LC",]$F1),
              color="black") +
-    annotate(geom="text", x=1.5, xmin=1.5,xmax=2.5, y=0.45, hjust=0.1,label=paste("LC:", data[data$Stream == names[i] & data$Algoritmo=="LD",]$F1),
+    annotate(geom="text", x=1.5, xmin=1.5,xmax=2.5, y=0.45, hjust=0.1,label=paste("LD:", data[data$Stream == names[i] & data$Algoritmo=="LD",]$F1),
              color="black")
 
   plist[[names[i]]] = p1
