@@ -19,6 +19,7 @@ from skmultiflow.utils import calculate_object_size
 GRAPH_TITLE_FONTSIZE = 18
 GRAPH_AXIS_LABEL_FONTSIZE = 18
 GRAPH_LEGEND_FONTSIZE = 12
+GRAPH_TICKS_FONTSIZE=12
 
 class MultilabelGenerator2(MultilabelGenerator):
     # IGUAL QUE LA FUNCION ORIGINAL PERO NO PERMITE INSTANCIAS SIN ETIQUETAS
@@ -309,6 +310,7 @@ def labels_skew_graph(data, title="", output=False):
         "Frecuencia (escalada)",
         fontsize=GRAPH_AXIS_LABEL_FONTSIZE
     )
+    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -336,6 +338,7 @@ def labels_distribution_mae_graph(data, title="", output=False):
         "Distancia con respecto a dataset original",
         fontsize=GRAPH_AXIS_LABEL_FONTSIZE
     )
+    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -382,6 +385,7 @@ def labels_relationship_graph(plot_props, title="", output=False):
     fig = plt.figure(figsize=(24, 16))
     axis = fig.gca()
     axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
+    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
     sns.heatmap(
         linewidths=0,
         cmap=sns.color_palette("Greys_r", n_colors=100),
