@@ -19,7 +19,7 @@ from skmultiflow.utils import calculate_object_size
 GRAPH_TITLE_FONTSIZE = 18
 GRAPH_AXIS_LABEL_FONTSIZE = 18
 GRAPH_LEGEND_FONTSIZE = 12
-GRAPH_TICKS_FONTSIZE = 12
+GRAPH_TICKS_FONTSIZE = 18
 
 class MultilabelGenerator2(MultilabelGenerator):
     # IGUAL QUE LA FUNCION ORIGINAL PERO NO PERMITE INSTANCIAS SIN ETIQUETAS
@@ -283,6 +283,7 @@ def labels_distribution_graph(data, title="Label Distribution", output=False):
         "Frecuencia (escalada)",
         fontsize=GRAPH_AXIS_LABEL_FONTSIZE
     )
+    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -311,6 +312,9 @@ def labels_skew_graph(data, title="", output=False):
         fontsize=GRAPH_AXIS_LABEL_FONTSIZE
     )
     axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
+
+    max_x = max([max(i["x"]) for i in data])
+
     handles = []
     for i in data:
         sns.pointplot(**i, ax=axis)
@@ -318,6 +322,7 @@ def labels_skew_graph(data, title="", output=False):
             mpatches.Patch(color=i.get("color"), label=i.get("label"))
         )
     plt.legend(handles=handles, prop={"size": GRAPH_LEGEND_FONTSIZE})
+    axis.set_xticks(np.arange(1, max_x + 1, 2))
     if output:
         fig.savefig(output, bbox_inches="tight")
     else:
@@ -385,13 +390,16 @@ def labels_relationship_graph(plot_props, title="", output=False):
     fig = plt.figure(figsize=(24, 16))
     axis = fig.gca()
     axis.set_title(title, fontsize=GRAPH_TITLE_FONTSIZE)
-    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE)
+    axis.tick_params(axis='both', labelsize=GRAPH_TICKS_FONTSIZE + 16)
     sns.heatmap(
         linewidths=0,
-        cmap=sns.color_palette("Greys_r", n_colors=100),
+        cmap=sns.color_palette("YlOrBr", as_cmap=True),
         ax=axis,
         **plot_props
     )
+    plt.yticks(rotation=0)
+    axis.collections[0].colorbar.ax.tick_params(
+            labelsize=GRAPH_TICKS_FONTSIZE + 14)
     if output:
         fig.savefig(output, bbox_inches="tight")
     else:
