@@ -24,7 +24,7 @@ lazy-object-proxy==1.4.3
 liac-arff==2.5.0
 matplotlib==3.3.2
 mccabe==0.6.1
-numpy==1.20.3
+numpy==1.22.0
 packaging==20.9
 pandas==1.1.2
 parso==0.7.1
